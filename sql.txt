@@ -1,0 +1,17 @@
+-- 首先删除用户资料（如果存在）
+DELETE FROM user_profiles WHERE email = '你的测试邮箱';
+
+-- 然后删除认证用户（需要用户ID）
+-- 先查找用户ID
+SELECT id, email FROM auth.users WHERE email = '你的测试邮箱';
+
+-- 删除用户（替换下面的用户ID）
+DELETE FROM auth.users WHERE id = '用户ID';
+
+---------------------------------------------------------------------------------
+
+-- 删除所有用户资料
+DELETE FROM user_profiles;
+
+-- 删除所有认证用户
+DELETE FROM auth.users;
