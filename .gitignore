@@ -65,3 +65,6 @@ yarn-error.log*
 # IDE
 .vscode/
 .idea/
+
+# Ai chat log
+AI-Chat-log/
