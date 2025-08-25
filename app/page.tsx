@@ -5,7 +5,7 @@ import { PT_Sans, PT_Mono } from 'next/font/google'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import Header from './components/Header'
+import Header from '@components/Header'
 
 const ptSans = PT_Sans({ 
   weight: ['400', '700'],
