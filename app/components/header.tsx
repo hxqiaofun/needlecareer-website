@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 const ptSans = PT_Sans({ 
-  weight: ['400', '700'],
+  weight: ['400', '800'],
   subsets: ['latin'] 
 })
 
