@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PT_Sans } from 'next/font/google'
-import Header from '../components/Header'
+import Header from '@/app/components/Header'
 
 const ptSans = PT_Sans({ 
   weight: ['400', '700'],
