@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PT_Sans } from 'next/font/google'
+import Header from '../components/Header'
 
 const ptSans = PT_Sans({ 
   weight: ['400', '700'],
@@ -12,7 +13,6 @@ const ptSans = PT_Sans({
 })
 
 export default function Login() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -20,31 +20,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const router = useRouter()
-
-  // 清理移动端菜单状态
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setIsMobileMenuOpen(false)
-      }
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  // 防止背景滚动
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isMobileMenuOpen])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -65,18 +40,18 @@ export default function Login() {
       })
 
       if (error) {
-        setMessage('登录失败: ' + error.message)
+        setMessage('Login failed: ' + error.message)
         return
       }
 
       if (data.user) {
-        setMessage('登录成功！正在跳转...')
-        // 跳转到仪表板
-        router.push('/dashboard')
+        setMessage('Login successful! Redirecting...')
+        // 跳转到首页而不是dashboard
+        router.push('/')
       }
     } catch (error) {
-      setMessage('发生错误，请重试')
-      console.error('登录错误:', error)
+      setMessage('An error occurred, please try again')
+      console.error('Login error:', error)
     } finally {
       setLoading(false)
     }
@@ -84,117 +59,8 @@ export default function Login() {
 
   return (
     <div className={`min-h-screen bg-white ${ptSans.className}`}>
-      {/* 顶部导航栏 */}
-      <nav className="bg-white px-6 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          {/* Logo */}
-           <Link href="/">
-             <img 
-               src="/images/Needle_logo.png" 
-               alt="Needle Logo" 
-               className="h-8 md:h-10 object-contain cursor-pointer hover:opacity-80 transition-opacity"
-             />
-           </Link>
-          
-          {/* 右侧按钮组 */}
-          <div className="flex items-center space-x-3">
-            <Link href="/register">
-              <button className="bg-black px-4 py-0.5 text-lg font-bold hover:bg-gray-800 transition-colors" style={{color: '#c8ffd2'}}>
-                Sign Up
-              </button>
-            </Link>
-            <Link href="/login">
-              <button className="px-4 py-0.5 text-xl font-bold hover:opacity-60 transition-colors" style={{backgroundColor: '#c8ffd2', color: 'black'}}>
-                Log in
-              </button>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* 导航菜单栏 */}
-      <div className="bg-white px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center py-3">
-            {/* 左侧语言切换 */}
-            <span className="text-lg md:text-xl text-gray-800 font-bold">中/ENG</span>
-            
-            {/* 桌面端导航菜单 */}
-            <div className="hidden md:flex items-center space-x-6 text-xl text-gray-800 font-bold">
-              <a href="#" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>Students</a>
-              <span className="text-gray-400">|</span>
-              <a href="#" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>Employers</a>
-              <span className="text-gray-400">|</span>
-              <a href="#" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>Events</a>
-              <span className="text-gray-400">|</span>
-              <a href="#" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>Resources</a>
-              <span className="text-gray-400">|</span>
-              <a href="#" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>About Us</a>
-            </div>
-
-            {/* 手机端汉堡菜单按钮 */}
-            <button 
-              className="md:hidden flex flex-col space-y-1 p-2 z-50 relative"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="Toggle mobile menu"
-              type="button"
-            >
-              <div className={`w-6 h-0.5 bg-gray-800 transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></div>
-              <div className={`w-6 h-0.5 bg-gray-800 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></div>
-              <div className={`w-6 h-0.5 bg-gray-800 transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></div>
-            </button>
-          </div>
-
-          {/* 手机端悬浮下拉菜单 */}
-          {isMobileMenuOpen && (
-            <div className="md:hidden absolute top-full left-0 right-0 bg-gray-900 shadow-2xl z-40 transform transition-all duration-300">
-              <div className="flex flex-col text-white">
-                <button 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors border-b border-gray-700 text-left"
-                >
-                  Students
-                </button>
-                <button 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors border-b border-gray-700 text-left"
-                >
-                  Employers
-                </button>
-                <button 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors border-b border-gray-700 text-left"
-                >
-                  Events
-                </button>
-                <button 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors border-b border-gray-700 text-left"
-                >
-                  Resources
-                </button>
-                <button 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors text-left"
-                >
-                  About Us
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 背景遮罩 */}
-        {isMobileMenuOpen && (
-          <div 
-            className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
-            onClick={() => setIsMobileMenuOpen(false)}
-          ></div>
-        )}
-      </div>
-
-      {/* 全宽度装饰横线 */}
-      <div className="w-full h-3 mb-0" style={{backgroundColor: '#c8ffd2'}}></div>
+      {/* 使用 Header 组件 */}
+      <Header />
 
       {/* 主要内容区域 */}
       <main className="bg-gray-50 flex items-center justify-center py-12 px-4">
@@ -292,7 +158,7 @@ export default function Login() {
             {/* 消息显示 */}
             {message && (
               <div className={`p-3 rounded text-sm font-medium text-center ${
-                message.includes('成功') 
+                message.includes('successful') || message.includes('成功')
                   ? 'bg-green-50 text-green-700' 
                   : 'bg-red-50 text-red-700'
               }`}>

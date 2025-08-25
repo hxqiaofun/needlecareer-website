@@ -4,23 +4,56 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { PT_Sans } from 'next/font/google'
+import Header from '../../components/Header'
+
+const ptSans = PT_Sans({ 
+  weight: ['400', '700'],
+  subsets: ['latin'] 
+})
 
 interface UserProfile {
   id: string
   email: string
   full_name: string
-  user_type: 'jobseeker' | 'employer'
+  user_type: 'student' | 'employer'  // 更新为正确的类型
   company_name?: string
   phone?: string
 }
 
 interface JobFormData {
   title: string
+  job_types: string[]  // 改为数组
   location: string
   salary_range: string
   description: string
   requirements: string
 }
+
+// 错误类型定义
+interface JobFormErrors {
+  title?: string
+  job_types?: string
+  location?: string
+  salary_range?: string
+  description?: string
+  requirements?: string
+}
+
+// Job Type Options
+const JOB_TYPE_OPTIONS = [
+  { value: 'full-time', label: 'Full Time' },
+  { value: 'part-time', label: 'Part Time' },
+  { value: 'internship', label: 'Internship' },
+  { value: 'remote', label: 'Remote' },
+  { value: 'freelance', label: 'Freelance' },
+  { value: 'temporary', label: 'Temporary' },
+  { value: 'commission-based', label: 'Commission-based' },
+  { value: 'volunteer', label: 'Volunteer' },
+  { value: 'gc-sponsorship', label: 'GC Sponsorship' },
+  { value: 'h1b-sponsorship', label: 'H1B Sponsorship' },
+  { value: 'otp-sponsorship', label: 'OTP Sponsorship' }
+]
 
 export default function PostJob() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -28,12 +61,13 @@ export default function PostJob() {
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<JobFormData>({
     title: '',
+    job_types: [],  // 改为空数组
     location: '',
     salary_range: '',
     description: '',
     requirements: ''
   })
-  const [errors, setErrors] = useState<Partial<JobFormData>>({})
+  const [errors, setErrors] = useState<JobFormErrors>({})
   const router = useRouter()
 
   useEffect(() => {
@@ -69,14 +103,14 @@ export default function PostJob() {
 
       setProfile(profileData)
     } catch (error) {
-      console.error('权限检查错误:', error)
+      console.error('Permission check error:', error)
       router.push('/dashboard')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -87,24 +121,46 @@ export default function PostJob() {
     if (errors[name as keyof JobFormData]) {
       setErrors(prev => ({
         ...prev,
-        [name]: ''
+        [name]: undefined
+      }))
+    }
+  }
+
+  // 处理Job Type标签选择
+  const handleJobTypeToggle = (jobType: string) => {
+    setFormData(prev => ({
+      ...prev,
+      job_types: prev.job_types.includes(jobType)
+        ? prev.job_types.filter(type => type !== jobType)  // 移除标签
+        : [...prev.job_types, jobType]  // 添加标签
+    }))
+    
+    // 清除job_types的错误
+    if (errors.job_types) {
+      setErrors(prev => ({
+        ...prev,
+        job_types: undefined
       }))
     }
   }
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<JobFormData> = {}
+    const newErrors: JobFormErrors = {}
 
     if (!formData.title.trim()) {
-      newErrors.title = '请输入职位标题'
+      newErrors.title = 'Please enter job title'
+    }
+
+    if (formData.job_types.length === 0) {
+      newErrors.job_types = 'Please select at least one job type'
     }
 
     if (!formData.location.trim()) {
-      newErrors.location = '请输入工作地点'
+      newErrors.location = 'Please enter location'
     }
 
     if (!formData.description.trim()) {
-      newErrors.description = '请输入职位描述'
+      newErrors.description = 'Please enter job description'
     }
 
     setErrors(newErrors)
@@ -122,11 +178,12 @@ export default function PostJob() {
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        throw new Error('用户未登录')
+        throw new Error('User not logged in')
       }
 
       const jobData = {
         title: formData.title.trim(),
+        job_types: formData.job_types,  // 直接传递数组
         company_name: profile.company_name || profile.full_name,
         location: formData.location.trim(),
         salary_range: formData.salary_range.trim() || null,
@@ -144,12 +201,12 @@ export default function PostJob() {
       }
 
       // 发布成功，跳转回仪表板
-      router.push('/dashboard?success=job_posted')
+      router.push('/dashboard/employer?success=job_posted')
 
     } catch (error: any) {
-      console.error('发布职位错误:', error)
-      const errorMessage = error?.message || error?.toString() || '未知错误'
-      alert('发布失败：' + errorMessage)
+      console.error('Job posting error:', error)
+      const errorMessage = error?.message || error?.toString() || 'Unknown error'
+      alert('Posting failed: ' + errorMessage)
     } finally {
       setSubmitting(false)
     }
@@ -157,61 +214,47 @@ export default function PostJob() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl text-gray-600">加载中...</div>
+      <div className={`min-h-screen bg-white flex items-center justify-center ${ptSans.className}`}>
+        <div className="text-xl text-gray-600 font-medium">Loading...</div>
       </div>
     )
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl text-gray-600">权限不足</div>
+      <div className={`min-h-screen bg-white flex items-center justify-center ${ptSans.className}`}>
+        <div className="text-xl text-gray-600 font-medium">Access Denied</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* 导航栏 */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="text-xl font-bold text-gray-900">
-              <Link href="/">职聘网</Link>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard" className="text-gray-600 hover:text-gray-900">
-                返回仪表板
-              </Link>
-              <span className="text-gray-600">欢迎，{profile.full_name}</span>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className={`min-h-screen bg-white ${ptSans.className}`}>
+      {/* 使用 Header 组件 */}
+      <Header />
 
       <div className="max-w-3xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* 页面标题 */}
+          {/* Page Title */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">发布新职位</h1>
-            <p className="mt-2 text-gray-600">
-              填写以下信息来发布您的职位需求
+            <h1 className="text-3xl font-bold text-black">Post New Job</h1>
+            <p className="mt-2 text-gray-600 font-medium">
+              Fill in the information below to post your job opportunity
             </p>
           </div>
 
-          {/* 发布表单 */}
-          <div className="bg-white shadow rounded-lg">
+          {/* Post Job Form */}
+          <div className="bg-white shadow-lg rounded-lg border-2" style={{borderColor: '#c8ffd2'}}>
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* 基本信息 */}
+              {/* Basic Information */}
               <div>
-                <h2 className="text-lg font-medium text-gray-900 mb-4">基本信息</h2>
+                <h2 className="text-lg font-bold text-black mb-4">Basic Information</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* 职位标题 */}
+                  {/* Job Title */}
                   <div className="md:col-span-2">
-                    <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-                      职位标题 <span className="text-red-500">*</span>
+                    <label htmlFor="title" className="block text-sm font-bold text-black">
+                      Job Title <span style={{color: '#c8ffd2'}}>*</span>
                     </label>
                     <input
                       type="text"
@@ -219,18 +262,54 @@ export default function PostJob() {
                       name="title"
                       value={formData.title}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.title ? 'border-red-300' : 'border-gray-300'
+                      className={`mt-1 block w-full px-3 py-2 border-2 rounded-md shadow-sm focus:outline-none font-medium ${
+                        errors.title 
+                          ? 'border-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:border-black'
                       }`}
-                      placeholder="如：前端开发工程师"
+                      placeholder="e.g., Frontend Developer"
                     />
-                    {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
+                    {errors.title && <p className="mt-1 text-sm font-medium" style={{color: 'red'}}>{errors.title}</p>}
                   </div>
 
-                  {/* 工作地点 */}
+                  {/* Job Types - Multi-select Tags */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-black mb-3">
+                      Job Types <span style={{color: '#c8ffd2'}}>*</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {JOB_TYPE_OPTIONS.map(option => {
+                        const isSelected = formData.job_types.includes(option.value)
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => handleJobTypeToggle(option.value)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-bold border-2 transition-all ${
+                              isSelected
+                                ? 'text-black border-black'
+                                : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
+                            }`}
+                            style={isSelected ? {backgroundColor: '#c8ffd2'} : {}}
+                          >
+                            {option.label}
+                            {isSelected && (
+                              <span className="ml-1 text-black">✓</span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <p className="mt-1 text-xs text-gray-600 font-medium">
+                      Click to select multiple job types. You can choose more than one.
+                    </p>
+                    {errors.job_types && <p className="mt-2 text-sm font-medium" style={{color: 'red'}}>{errors.job_types}</p>}
+                  </div>
+
+                  {/* Location */}
                   <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-                      工作地点 <span className="text-red-500">*</span>
+                    <label htmlFor="location" className="block text-sm font-bold text-black">
+                      Location <span style={{color: '#c8ffd2'}}>*</span>
                     </label>
                     <input
                       type="text"
@@ -238,18 +317,20 @@ export default function PostJob() {
                       name="location"
                       value={formData.location}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.location ? 'border-red-300' : 'border-gray-300'
+                      className={`mt-1 block w-full px-3 py-2 border-2 rounded-md shadow-sm focus:outline-none font-medium ${
+                        errors.location 
+                          ? 'border-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:border-black'
                       }`}
-                      placeholder="如：北京朝阳区"
+                      placeholder="e.g., New York, NY"
                     />
-                    {errors.location && <p className="mt-1 text-sm text-red-600">{errors.location}</p>}
+                    {errors.location && <p className="mt-1 text-sm font-medium" style={{color: 'red'}}>{errors.location}</p>}
                   </div>
 
-                  {/* 薪资范围 */}
+                  {/* Salary Range */}
                   <div>
-                    <label htmlFor="salary_range" className="block text-sm font-medium text-gray-700">
-                      薪资范围
+                    <label htmlFor="salary_range" className="block text-sm font-bold text-black">
+                      Salary Range
                     </label>
                     <input
                       type="text"
@@ -257,38 +338,39 @@ export default function PostJob() {
                       name="salary_range"
                       value={formData.salary_range}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="如：10k-15k"
+                      className="mt-1 block w-full px-3 py-2 border-2 border-gray-300 rounded-md shadow-sm focus:outline-none focus:border-black font-medium"
+                      placeholder="e.g., $60k-80k"
                     />
                   </div>
 
-                  {/* 公司名称（只读） */}
+                  {/* Company Name (Read-only) */}
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      公司名称
+                    <label className="block text-sm font-bold text-black">
+                      Company Name
                     </label>
                     <input
                       type="text"
                       value={profile.company_name || profile.full_name}
                       disabled
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-600"
+                      className="mt-1 block w-full px-3 py-2 border-2 border-gray-300 rounded-md shadow-sm text-gray-600 font-medium"
+                      style={{backgroundColor: '#fafafa'}}
                     />
-                    <p className="mt-1 text-xs text-gray-500">
-                      公司名称来自您的账户信息，如需修改请前往个人设置
+                    <p className="mt-1 text-xs text-gray-600 font-medium">
+                      Company name is from your account information. Please go to profile settings to modify
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* 详细信息 */}
+              {/* Detailed Information */}
               <div>
-                <h2 className="text-lg font-medium text-gray-900 mb-4">详细信息</h2>
+                <h2 className="text-lg font-bold text-black mb-4">Detailed Information</h2>
                 
                 <div className="space-y-6">
-                  {/* 职位描述 */}
+                  {/* Job Description */}
                   <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                      职位描述 <span className="text-red-500">*</span>
+                    <label htmlFor="description" className="block text-sm font-bold text-black">
+                      Job Description <span style={{color: '#c8ffd2'}}>*</span>
                     </label>
                     <textarea
                       id="description"
@@ -296,18 +378,20 @@ export default function PostJob() {
                       rows={6}
                       value={formData.description}
                       onChange={handleInputChange}
-                      className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.description ? 'border-red-300' : 'border-gray-300'
+                      className={`mt-1 block w-full px-3 py-2 border-2 rounded-md shadow-sm focus:outline-none font-medium ${
+                        errors.description 
+                          ? 'border-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:border-black'
                       }`}
-                      placeholder="请详细描述职位的工作内容、职责等..."
+                      placeholder="Please describe the job responsibilities, duties, and work content in detail..."
                     />
-                    {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
+                    {errors.description && <p className="mt-1 text-sm font-medium" style={{color: 'red'}}>{errors.description}</p>}
                   </div>
 
-                  {/* 职位要求 */}
+                  {/* Job Requirements */}
                   <div>
-                    <label htmlFor="requirements" className="block text-sm font-medium text-gray-700">
-                      职位要求
+                    <label htmlFor="requirements" className="block text-sm font-bold text-black">
+                      Job Requirements
                     </label>
                     <textarea
                       id="requirements"
@@ -315,27 +399,28 @@ export default function PostJob() {
                       rows={6}
                       value={formData.requirements}
                       onChange={handleInputChange}
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="请描述对候选人的技能要求、经验要求等..."
+                      className="mt-1 block w-full px-3 py-2 border-2 border-gray-300 rounded-md shadow-sm focus:outline-none focus:border-black font-medium"
+                      placeholder="Please describe the skills, experience, and qualifications required for candidates..."
                     />
                   </div>
                 </div>
               </div>
 
-              {/* 提交按钮 */}
-              <div className="flex justify-end space-x-4 pt-6 border-t">
+              {/* Submit Buttons */}
+              <div className="flex justify-end space-x-4 pt-6 border-t-2" style={{borderColor: '#c8ffd2'}}>
                 <Link
-                  href="/dashboard"
-                  className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  href="/dashboard/employer"
+                  className="px-6 py-2 border-2 border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-bold transition-colors"
                 >
-                  取消
+                  Cancel
                 </Link>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
+                  className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800 disabled:bg-gray-300 font-bold transition-colors"
+                  style={{color: submitting ? '#000' : '#c8ffd2'}}
                 >
-                  {submitting ? '发布中...' : '发布职位'}
+                  {submitting ? 'Posting...' : 'Post Job'}
                 </button>
               </div>
             </form>
