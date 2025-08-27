@@ -1,391 +1,340 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // 1. 导入 useRef
 import { useRouter, useParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import Header from '@/app/components/Header';
+import BasicInfoSection from '@/app/components/resume/BasicInfoSection';
+import SkillsSection from '@/app/components/resume/SkillsSection';
+import EducationSection from '@/app/components/resume/EducationSection';
+import ExperienceSection from '@/app/components/resume/ExperienceSection';
+import ProjectsSection from '@/app/components/resume/ProjectsSection';
+import AdditionalInfoSection from '@/app/components/resume/AdditionalInfoSection';
+import { Resume, ResumeDetail } from '@/lib/types/resume';
 
-interface ResumeFormData {
-  // 基本信息
-  title: string;
-  status: 'draft' | 'active' | 'archived';
-  is_default: boolean;
-  
-  // 个人详细信息
-  full_name: string;
-  email: string;
-  phone: string;
-  location: string;
-  website: string;
-  linkedin_url: string;
-  github_url: string;
-  
-  // 职业概述
-  professional_summary: string;
-  career_objective: string;
-  
-  // 结构化数据（简化版）
-  skills: string;
-  education: string;
-  experience: string;
-  projects: string;
-  certifications: string;
-  languages: string;
-  
-  // 其他信息
-  interests: string;
-  reference_contacts: string;
-}
+interface EditPageProps {}
 
-export default function ResumeEditPage() {
+export default function ResumeEditPage({}: EditPageProps) {
   const router = useRouter();
   const params = useParams();
-  const [user, setUser] = useState<any>(null);
+
+  const resumeId = params.id as string;
+
+  // 状态管理
+  const [resume, setResume] = useState<Resume | null>(null);
+  const [resumeDetail, setResumeDetail] = useState<ResumeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
-  const [successMessage, setSuccessMessage] = useState('');
-  const [isNewResume, setIsNewResume] = useState(false);
-  
-  const [formData, setFormData] = useState<ResumeFormData>({
-    title: '',
-    status: 'draft',
-    is_default: false,
-    full_name: '',
-    email: '',
-    phone: '',
-    location: '',
-    website: '',
-    linkedin_url: '',
-    github_url: '',
-    professional_summary: '',
-    career_objective: '',
-    skills: '',
-    education: '',
-    experience: '',
-    projects: '',
-    certifications: '',
-    languages: '',
-    interests: '',
-    reference_contacts: ''
-  });
+  const [activeSection, setActiveSection] = useState('basic');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  useEffect(() => {
-    checkUser();
-  }, []);
+  // 2. 创建一个 ref 来防止重复创建
+  const isCreatingRef = useRef(false);
 
-  useEffect(() => {
-    if (user && params.id) {
-      if (params.id === 'new') {
-        setIsNewResume(true);
-        // 预填充用户的基本信息
-        loadUserProfile();
-        setLoading(false);
-      } else {
-        loadResumeData();
+  // 获取简历数据
+  const fetchResumeData = async () => {
+    try {
+      setLoading(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log('No session found, redirecting to login');
+        router.push('/login');
+        return;
       }
-    }
-  }, [user, params.id]);
 
-  const checkUser = async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      router.push('/login');
-      return;
-    }
+      console.log('Current user ID:', session.user.id);
+      console.log('Resume ID from URL:', resumeId);
+      
+      if (resumeId === 'new') {
+        // 3. 检查 ref 标志位，如果正在创建，则直接返回
+        if (isCreatingRef.current) {
+          return;
+        }
+        // 设置标志位，表示创建已开始
+        isCreatingRef.current = true;
+        
+        console.log('Creating new resume...');
+        await createNewResume(session.user.id);
+        return;
+      }
 
-    // 检查用户类型
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('user_type')
-      .eq('id', user.id)
-      .single();
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(resumeId)) {
+        console.error('Invalid resume ID format:', resumeId);
+        alert('Invalid resume ID format. Please check the URL.');
+        router.push('/dashboard/student/resumes');
+        return;
+      }
+      
+      const { data: resumeData, error: resumeError } = await supabase
+        .from('resumes')
+        .select('*')
+        .eq('id', resumeId)
+        .single();
 
-    if (profile?.user_type !== 'student') {
-      router.push('/dashboard');
-      return;
-    }
+      console.log('Resume query result:', { resumeData, resumeError });
 
-    setUser(user);
-  };
+      if (resumeError) {
+        console.error('Error fetching resume:', resumeError);
+        if (resumeError.code === 'PGRST116') {
+          alert('Resume not found. Please check if the resume ID is correct.');
+        } else {
+          alert('Error loading resume: ' + resumeError.message);
+        }
+        router.push('/dashboard/student/resumes');
+        return;
+      }
 
-  const loadUserProfile = async () => {
-    const supabase = createClient();
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('full_name, email, phone')
-      .eq('id', user.id)
-      .single();
+      if (resumeData.student_id !== session.user.id) {
+        console.error('Permission denied: Resume belongs to different user');
+        alert('You do not have permission to edit this resume.');
+        router.push('/dashboard/student/resumes');
+        return;
+      }
 
-    if (profile) {
-      setFormData(prev => ({
-        ...prev,
-        full_name: profile.full_name || '',
-        email: profile.email || '',
-        phone: profile.phone || '',
-        title: `${profile.full_name || 'My'} Resume`
-      }));
-    }
-  };
+      setResume(resumeData);
 
-  const loadResumeData = async () => {
-    const supabase = createClient();
-    
-    // 获取简历基本信息
-    const { data: resume, error: resumeError } = await supabase
-      .from('resumes')
-      .select('*')
-      .eq('id', params.id)
-      .eq('student_id', user.id)
-      .single();
+      const { data: detailData, error: detailError } = await supabase
+        .from('resume_details')
+        .select('*')
+        .eq('resume_id', resumeId)
+        .single();
 
-    if (resumeError || !resume) {
+      console.log('Resume details query result:', { detailData, detailError });
+
+      if (detailError && detailError.code !== 'PGRST116') {
+        console.error('Error fetching resume details:', detailError);
+      }
+
+      if (!detailData) {
+        console.log('Creating empty resume detail structure');
+        const emptyDetail: Partial<ResumeDetail> = {
+          resume_id: resumeId,
+          full_name: '',
+          email: session.user.email || '',
+          phone: '',
+          location: '',
+          professional_summary: '',
+          skills: [],
+          education: [],
+          experience: [],
+          projects: [],
+          certifications: [],
+          languages: []
+        };
+        setResumeDetail(emptyDetail as ResumeDetail);
+      } else {
+        setResumeDetail(detailData);
+      }
+
+    } catch (error) {
+      console.error('Error in fetchResumeData:', error);
+      alert('An unexpected error occurred while loading the resume.');
       router.push('/dashboard/student/resumes');
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    // 获取简历详细信息
-    const { data: details } = await supabase
-      .from('resume_details')
-      .select('*')
-      .eq('resume_id', params.id)
-      .single();
-
-    // 填充表单数据
-    setFormData({
-      title: resume.title,
-      status: resume.status,
-      is_default: resume.is_default,
-      full_name: details?.full_name || '',
-      email: details?.email || '',
-      phone: details?.phone || '',
-      location: details?.location || '',
-      website: details?.website || '',
-      linkedin_url: details?.linkedin_url || '',
-      github_url: details?.github_url || '',
-      professional_summary: details?.professional_summary || '',
-      career_objective: details?.career_objective || '',
-      skills: formatJsonToText(details?.skills),
-      education: formatJsonToText(details?.education),
-      experience: formatJsonToText(details?.experience),
-      projects: formatJsonToText(details?.projects),
-      certifications: formatJsonToText(details?.certifications),
-      languages: formatJsonToText(details?.languages),
-      interests: details?.interests || '',
-      reference_contacts: details?.reference_contacts || ''
-    });
-
-    setLoading(false);
   };
 
-  // 将JSON数据格式化为可编辑的文本
-  const formatJsonToText = (jsonData: any) => {
-    if (!jsonData || jsonData.length === 0) return '';
-    
+  // 创建新简历
+  const createNewResume = async (userId: string) => {
     try {
-      if (Array.isArray(jsonData)) {
-        return jsonData.map(item => {
-          if (typeof item === 'object') {
-            return Object.entries(item)
-              .map(([key, value]) => `${key}: ${value}`)
-              .join('\n');
-          }
-          return item;
-        }).join('\n\n');
-      }
-      return JSON.stringify(jsonData, null, 2);
-    } catch {
-      return '';
-    }
-  };
-
-  // 将文本数据转换为JSON格式存储
-  const formatTextToJson = (text: string, field: string) => {
-    if (!text.trim()) return [];
-    
-    try {
-      // 简单的文本解析 - 后续可以优化
-      const lines = text.split('\n').filter(line => line.trim());
+      console.log('Creating new resume for user:', userId);
       
-      if (field === 'skills') {
-        return [{ category: 'General', items: lines }];
-      } else if (field === 'education') {
-        return lines.map(line => ({ description: line }));
-      } else if (field === 'experience') {
-        return lines.map(line => ({ description: line }));
-      } else if (field === 'projects') {
-        return lines.map(line => ({ name: line }));
-      } else if (field === 'certifications') {
-        return lines.map(line => ({ name: line }));
-      } else if (field === 'languages') {
-        return lines.map(line => ({ language: line }));
+      const { data: newResume, error: createError } = await supabase
+        .from('resumes')
+        .insert({
+          student_id: userId,
+          title: 'Untitled Resume',
+          status: 'draft',
+          is_default: false
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating new resume:', createError);
+        alert('Failed to create new resume: ' + createError.message);
+        router.push('/dashboard/student/resumes');
+        return;
       }
+
+      console.log('New resume created:', newResume);
       
-      return lines;
-    } catch {
-      return [];
-    }
-  };
-
-  const handleInputChange = (field: keyof ResumeFormData, value: string | boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // 清除对应字段的错误
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
-    
-    if (!formData.title.trim()) {
-      newErrors.title = 'Resume title is required';
-    }
-    
-    if (!formData.full_name.trim()) {
-      newErrors.full_name = 'Full name is required';
-    }
-    
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-    
-    setSaving(true);
-    setSuccessMessage('');
-    
-    try {
-      const supabase = createClient();
-      
-      if (isNewResume) {
-        // 创建新简历
-        const { data: newResume, error: resumeError } = await supabase
-          .from('resumes')
-          .insert({
-            student_id: user.id,
-            title: formData.title,
-            status: formData.status,
-            is_default: formData.is_default
-          })
-          .select()
-          .single();
-
-        if (resumeError) throw resumeError;
-
-        // 创建简历详细信息
-        const { error: detailsError } = await supabase
-          .from('resume_details')
-          .insert({
-            resume_id: newResume.id,
-            full_name: formData.full_name,
-            email: formData.email,
-            phone: formData.phone,
-            location: formData.location,
-            website: formData.website,
-            linkedin_url: formData.linkedin_url,
-            github_url: formData.github_url,
-            professional_summary: formData.professional_summary,
-            career_objective: formData.career_objective,
-            skills: formatTextToJson(formData.skills, 'skills'),
-            education: formatTextToJson(formData.education, 'education'),
-            experience: formatTextToJson(formData.experience, 'experience'),
-            projects: formatTextToJson(formData.projects, 'projects'),
-            certifications: formatTextToJson(formData.certifications, 'certifications'),
-            languages: formatTextToJson(formData.languages, 'languages'),
-            interests: formData.interests,
-            reference_contacts: formData.reference_contacts
-          });
-
-        if (detailsError) throw detailsError;
-        
-        setSuccessMessage('Resume created successfully!');
-        setTimeout(() => {
-          router.push('/dashboard/student/resumes');
-        }, 2000);
-        
-      } else {
-        // 更新现有简历
-        const { error: resumeError } = await supabase
-          .from('resumes')
-          .update({
-            title: formData.title,
-            status: formData.status,
-            is_default: formData.is_default,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', params.id)
-          .eq('student_id', user.id);
-
-        if (resumeError) throw resumeError;
-
-        // 更新简历详细信息
-        const { error: detailsError } = await supabase
-          .from('resume_details')
-          .upsert({
-            resume_id: params.id,
-            full_name: formData.full_name,
-            email: formData.email,
-            phone: formData.phone,
-            location: formData.location,
-            website: formData.website,
-            linkedin_url: formData.linkedin_url,
-            github_url: formData.github_url,
-            professional_summary: formData.professional_summary,
-            career_objective: formData.career_objective,
-            skills: formatTextToJson(formData.skills, 'skills'),
-            education: formatTextToJson(formData.education, 'education'),
-            experience: formatTextToJson(formData.experience, 'experience'),
-            projects: formatTextToJson(formData.projects, 'projects'),
-            certifications: formatTextToJson(formData.certifications, 'certifications'),
-            languages: formatTextToJson(formData.languages, 'languages'),
-            interests: formData.interests,
-            reference_contacts: formData.reference_contacts,
-            updated_at: new Date().toISOString()
-          });
-
-        if (detailsError) throw detailsError;
-        
-        setSuccessMessage('Resume updated successfully!');
-      }
+      router.replace(`/dashboard/student/resumes/edit/${newResume.id}`);
       
     } catch (error) {
-      console.error('Error saving resume:', error);
-      setErrors({ general: 'Failed to save resume. Please try again.' });
+      console.error('Error in createNewResume:', error);
+      alert('An unexpected error occurred while creating the resume.');
+      router.push('/dashboard/student/resumes');
+    }
+  };
+
+  // 保存简历数据
+  const saveResumeData = async () => {
+    if (!resumeDetail) return;
+
+    try {
+      setSaving(true);
+
+      const { error } = await supabase
+        .from('resume_details')
+        .upsert({
+          ...resumeDetail,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) {
+        console.error('Error saving resume:', error);
+        alert('Failed to save resume. Please try again.');
+        return;
+      }
+
+      setHasUnsavedChanges(false);
+      
+      const successMsg = document.createElement('div');
+      successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      successMsg.textContent = 'Resume saved successfully!';
+      document.body.appendChild(successMsg);
+      setTimeout(() => document.body.removeChild(successMsg), 3000);
+
+    } catch (error) {
+      console.error('Error in saveResumeData:', error);
+      alert('An error occurred while saving. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
+  // 计算简历完成度
+  const calculateCompletion = (data: ResumeDetail | null): number => {
+    if (!data) return 0;
+    
+    let completedFields = 0;
+    let totalFields = 0;
+    
+    // 基本信息 (权重: 30%)
+    const basicFields = ['full_name', 'email', 'phone', 'location', 'professional_summary'];
+    const basicCompleted = basicFields.filter(field => {
+      const value = data[field as keyof ResumeDetail];
+      return value && value.toString().trim() !== '';
+    }).length;
+    completedFields += basicCompleted * 6; // 每个基本信息字段权重为6
+    totalFields += basicFields.length * 6;
+    
+    // 技能 (权重: 15%)
+    if (data.skills && Array.isArray(data.skills) && data.skills.length > 0) {
+      const hasValidSkills = data.skills.some(skillCategory => 
+        skillCategory.items && skillCategory.items.length > 0
+      );
+      if (hasValidSkills) completedFields += 15;
+    }
+    totalFields += 15;
+    
+    // 教育背景 (权重: 20%)
+    if (data.education && Array.isArray(data.education) && data.education.length > 0) {
+      const hasValidEducation = data.education.some(edu => 
+        edu.school && edu.school.trim() !== '' && edu.degree && edu.degree.trim() !== ''
+      );
+      if (hasValidEducation) completedFields += 20;
+    }
+    totalFields += 20;
+    
+    // 工作经历 (权重: 20%)
+    if (data.experience && Array.isArray(data.experience) && data.experience.length > 0) {
+      const hasValidExperience = data.experience.some(exp => 
+        exp.company && exp.company.trim() !== '' && exp.position && exp.position.trim() !== ''
+      );
+      if (hasValidExperience) completedFields += 20;
+    }
+    totalFields += 20;
+    
+    // 项目经历 (权重: 10%)
+    if (data.projects && Array.isArray(data.projects) && data.projects.length > 0) {
+      const hasValidProjects = data.projects.some(project => 
+        project.name && project.name.trim() !== '' && project.description && project.description.trim() !== ''
+      );
+      if (hasValidProjects) completedFields += 10;
+    }
+    totalFields += 10;
+    
+    // 附加信息 (权重: 5%)
+    const additionalItems = [
+      data.certifications && Array.isArray(data.certifications) && data.certifications.length > 0,
+      data.languages && Array.isArray(data.languages) && data.languages.length > 0,
+      data.interests && data.interests.trim() !== ''
+    ];
+    const additionalCompleted = additionalItems.filter(Boolean).length;
+    completedFields += additionalCompleted * 1.67; // 平均分配5%权重
+    totalFields += 5;
+    
+    return Math.round((completedFields / totalFields) * 100);
+  };
+
+  // 更新简历详情
+  const updateResumeDetail = (field: keyof ResumeDetail, value: any) => {
+    if (!resumeDetail) return;
+    
+    setResumeDetail(prev => prev ? { ...prev, [field]: value } : prev);
+    setHasUnsavedChanges(true);
+  };
+
+  const sections = [
+    { id: 'basic', label: 'Basic Info', icon: '👤' },
+    { id: 'skills', label: 'Skills', icon: '⚡' },
+    { id: 'education', label: 'Education', icon: '🎓' },
+    { id: 'experience', label: 'Experience', icon: '💼' },
+    { id: 'projects', label: 'Projects', icon: '🚀' },
+    { id: 'additional', label: 'Additional', icon: '📋' }
+  ];
+
+  useEffect(() => {
+    if (resumeId) {
+      fetchResumeData();
+    }
+  }, [resumeId]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading resume...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!resume || !resumeDetail) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Resume Not Found</h2>
+            <p className="text-gray-600 mb-6">The resume you're looking for doesn't exist.</p>
+            <button
+              onClick={() => router.push('/dashboard/student/resumes')}
+              className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition-colors"
+            >
+              Back to Resumes
+            </button>
           </div>
         </div>
       </div>
@@ -396,366 +345,129 @@ export default function ResumeEditPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* 页面标题 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            {isNewResume ? 'Create New Resume' : 'Edit Resume'}
-          </h1>
-          <p className="mt-2 text-gray-600">
-            {isNewResume 
-              ? 'Fill out your information to create a professional resume' 
-              : 'Update your resume information'
-            }
-          </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Edit Resume</h1>
+              <p className="text-gray-600 mt-1">
+                Editing: <span className="font-medium">{resume.title}</span>
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => router.push('/dashboard/student/resumes')}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Back
+              </button>
+              
+              <button
+                onClick={saveResumeData}
+                disabled={saving || !hasUnsavedChanges}
+                className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                  saving || !hasUnsavedChanges
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-500 text-white hover:bg-green-600'
+                }`}
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+          
+          {hasUnsavedChanges && (
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800 text-sm">
+                ⚠️ You have unsaved changes. Don't forget to save your progress!
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* 成功消息 */}
-        {successMessage && (
-          <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-            {successMessage}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Sections</h3>
+              <nav className="space-y-2">
+                {sections.map((section) => (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      activeSection === section.id
+                        ? 'bg-green-100 text-green-700 border border-green-200'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span className="text-lg">{section.icon}</span>
+                    <span className="font-medium">{section.label}</span>
+                  </button>
+                ))}
+              </nav>
+              
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Completion</h4>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${calculateCompletion(resumeDetail)}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-600 mt-1">{calculateCompletion(resumeDetail)}% Complete</p>
+              </div>
+            </div>
           </div>
-        )}
 
-        {/* 通用错误消息 */}
-        {errors.general && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-            {errors.general}
-          </div>
-        )}
-
-        {/* 表单 */}
-        <form onSubmit={handleSubmit} className="bg-white shadow-sm rounded-lg p-6 space-y-6">
-          {/* 简历基本设置 */}
-          <div className="border-b pb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Resume Settings</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Resume Title *
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => handleInputChange('title', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                    errors.title ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="e.g., Software Engineer Resume"
-                />
-                {errors.title && (
-                  <p className="mt-1 text-sm text-red-600">{errors.title}</p>
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="p-6">
+                {activeSection === 'basic' && (
+                  <BasicInfoSection
+                    data={resumeDetail}
+                    onChange={updateResumeDetail}
+                  />
+                )}
+                
+                {activeSection === 'skills' && (
+                  <SkillsSection
+                    data={resumeDetail}
+                    onChange={updateResumeDetail}
+                  />
+                )}
+                
+                {activeSection === 'education' && (
+                  <EducationSection
+                    data={resumeDetail}
+                    onChange={updateResumeDetail}
+                  />
+                )}
+                
+                {activeSection === 'experience' && (
+                  <ExperienceSection
+                    data={resumeDetail}
+                    onChange={updateResumeDetail}
+                  />
+                )}
+                
+                {activeSection === 'projects' && (
+                  <ProjectsSection
+                    data={resumeDetail}
+                    onChange={updateResumeDetail}
+                  />
+                )}
+                
+                {activeSection === 'additional' && (
+                  <AdditionalInfoSection
+                    data={resumeDetail}
+                    onChange={updateResumeDetail}
+                  />
                 )}
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleInputChange('status', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="active">Active</option>
-                  <option value="archived">Archived</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.is_default}
-                  onChange={(e) => handleInputChange('is_default', e.target.checked)}
-                  className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                />
-                <span className="ml-2 text-sm text-gray-700">Set as default resume</span>
-              </label>
             </div>
           </div>
-
-          {/* 个人信息 */}
-          <div className="border-b pb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Personal Information</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.full_name}
-                  onChange={(e) => handleInputChange('full_name', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                    errors.full_name ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {errors.full_name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.full_name}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="City, State, Country"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Website
-                </label>
-                <input
-                  type="url"
-                  value={formData.website}
-                  onChange={(e) => handleInputChange('website', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="https://yourwebsite.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  LinkedIn URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.linkedin_url}
-                  onChange={(e) => handleInputChange('linkedin_url', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="https://linkedin.com/in/yourprofile"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  GitHub URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.github_url}
-                  onChange={(e) => handleInputChange('github_url', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="https://github.com/yourusername"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 职业概述 */}
-          <div className="border-b pb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Professional Summary</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Professional Summary
-                </label>
-                <textarea
-                  value={formData.professional_summary}
-                  onChange={(e) => handleInputChange('professional_summary', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Write a brief summary of your professional background and key achievements..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Career Objective
-                </label>
-                <textarea
-                  value={formData.career_objective}
-                  onChange={(e) => handleInputChange('career_objective', e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Describe your career goals and what you're looking for..."
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 详细信息部分 */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold text-gray-900">Detailed Information</h2>
-            <p className="text-sm text-gray-600 -mt-2">
-              Enter each item on a new line. This is a simplified version - we'll add better editing features later.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Skills
-                </label>
-                <textarea
-                  value={formData.skills}
-                  onChange={(e) => handleInputChange('skills', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="JavaScript&#10;React&#10;Node.js&#10;Python"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Languages
-                </label>
-                <textarea
-                  value={formData.languages}
-                  onChange={(e) => handleInputChange('languages', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="English (Native)&#10;Spanish (Fluent)&#10;French (Intermediate)"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Education
-                </label>
-                <textarea
-                  value={formData.education}
-                  onChange={(e) => handleInputChange('education', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Bachelor's in Computer Science&#10;University Name, 2020-2024&#10;GPA: 3.8"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Experience
-                </label>
-                <textarea
-                  value={formData.experience}
-                  onChange={(e) => handleInputChange('experience', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Software Engineer at ABC Company&#10;June 2023 - Present&#10;Developed web applications using React and Node.js"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Projects
-                </label>
-                <textarea
-                  value={formData.projects}
-                  onChange={(e) => handleInputChange('projects', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="E-commerce Website&#10;Built with React and Node.js&#10;https://github.com/username/project"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Certifications
-                </label>
-                <textarea
-                  value={formData.certifications}
-                  onChange={(e) => handleInputChange('certifications', e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="AWS Certified Developer&#10;Google Cloud Professional&#10;Microsoft Azure Fundamentals"
-                />
-              </div>
-            </div>
-
-            {/* 其他信息 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Interests & Hobbies
-                </label>
-                <textarea
-                  value={formData.interests}
-                  onChange={(e) => handleInputChange('interests', e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Photography, hiking, open source contributions..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  References
-                </label>
-                <textarea
-                  value={formData.reference_contacts}
-                  onChange={(e) => handleInputChange('reference_contacts', e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Available upon request, or provide contact details..."
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 提交按钮 */}
-          <div className="flex gap-4 pt-6 border-t">
-            <button
-              type="button"
-              onClick={() => router.push('/dashboard/student/resumes')}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            
-            <button
-              type="submit"
-              disabled={saving}
-              className={`px-6 py-2 rounded-lg text-white font-medium transition-colors ${
-                saving
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700'
-              }`}
-            >
-              {saving ? 'Saving...' : (isNewResume ? 'Create Resume' : 'Update Resume')}
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );
