@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react'; // 1. 导入 useRef
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Header from '@/app/components/Header';
@@ -27,8 +27,11 @@ export default function ResumeEditPage({}: EditPageProps) {
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('basic');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState('');
 
-  // 2. 创建一个 ref 来防止重复创建
+  // 创建一个 ref 来防止重复创建
   const isCreatingRef = useRef(false);
 
   // 获取简历数据
@@ -47,7 +50,7 @@ export default function ResumeEditPage({}: EditPageProps) {
       console.log('Resume ID from URL:', resumeId);
       
       if (resumeId === 'new') {
-        // 3. 检查 ref 标志位，如果正在创建，则直接返回
+        // 检查 ref 标志位，如果正在创建，则直接返回
         if (isCreatingRef.current) {
           return;
         }
@@ -171,31 +174,62 @@ export default function ResumeEditPage({}: EditPageProps) {
     }
   };
 
-  // 保存简历数据
-  const saveResumeData = async () => {
-    if (!resumeDetail) return;
+  // 保存简历数据 (已修复)
+  const saveResumeData = async (selectedStatus?: 'draft' | 'active') => {
+    if (!resumeDetail || !resume) return;
 
     try {
       setSaving(true);
 
-      const { error } = await supabase
+      // 关键改动：在 upsert 后添加 .select() 来获取刚保存或更新的数据。
+      const { data: savedData, error: detailError } = await supabase
         .from('resume_details')
         .upsert({
           ...resumeDetail,
           updated_at: new Date().toISOString()
-        });
+        })
+        .select()
+        .single();
 
-      if (error) {
-        console.error('Error saving resume:', error);
+      if (detailError) {
+        console.error('Error saving resume details:', detailError);
         alert('Failed to save resume. Please try again.');
-        return;
+        return; // 在出错时提前返回
+      }
+
+      // 关键改动：使用从数据库返回的 `savedData` 来更新本地的 `resumeDetail` 状态。
+      if (savedData) {
+        setResumeDetail(savedData);
+      }
+
+      // 如果选择了新状态，更新简历状态
+      if (selectedStatus && selectedStatus !== resume.status) {
+        const { error: statusError } = await supabase
+          .from('resumes')
+          .update({ 
+            status: selectedStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', resume.id);
+
+        if (statusError) {
+          console.error('Error updating resume status:', statusError);
+          alert('Failed to update resume status. Please try again.');
+          return;
+        }
+
+        // 更新本地状态
+        setResume(prev => prev ? { ...prev, status: selectedStatus } : prev);
       }
 
       setHasUnsavedChanges(false);
+      setShowSaveDialog(false);
       
       const successMsg = document.createElement('div');
       successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
-      successMsg.textContent = 'Resume saved successfully!';
+      successMsg.textContent = selectedStatus 
+        ? `Resume saved as ${selectedStatus === 'active' ? 'Active' : 'Draft'}!`
+        : 'Resume saved successfully!';
       document.body.appendChild(successMsg);
       setTimeout(() => document.body.removeChild(successMsg), 3000);
 
@@ -204,6 +238,80 @@ export default function ResumeEditPage({}: EditPageProps) {
       alert('An error occurred while saving. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // 处理保存按钮点击
+  const handleSaveClick = () => {
+    if (!resumeDetail) return;
+    
+    const completion = calculateCompletion(resumeDetail);
+    
+    // 如果完成度低于40%，直接保存为草稿
+    if (completion < 40) {
+      saveResumeData('draft');
+      return;
+    }
+    
+    // 如果完成度较高，显示状态选择对话框
+    setShowSaveDialog(true);
+  };
+
+  // 开始编辑标题
+  const startEditingTitle = () => {
+    if (!resume) return;
+    setTempTitle(resume.title);
+    setEditingTitle(true);
+  };
+
+  // 保存标题
+  const saveTitle = async () => {
+    if (!resume || !tempTitle.trim()) return;
+    
+    try {
+      const { error } = await supabase
+        .from('resumes')
+        .update({ 
+          title: tempTitle.trim(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', resume.id);
+
+      if (error) {
+        console.error('Error updating resume title:', error);
+        alert('Failed to update resume title. Please try again.');
+        return;
+      }
+
+      // 更新本地状态
+      setResume(prev => prev ? { ...prev, title: tempTitle.trim() } : prev);
+      setEditingTitle(false);
+      
+      // 显示成功提示
+      const successMsg = document.createElement('div');
+      successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      successMsg.textContent = 'Resume title updated!';
+      document.body.appendChild(successMsg);
+      setTimeout(() => document.body.removeChild(successMsg), 2000);
+
+    } catch (error) {
+      console.error('Error in saveTitle:', error);
+      alert('An error occurred while updating title. Please try again.');
+    }
+  };
+
+  // 取消编辑标题
+  const cancelEditingTitle = () => {
+    setTempTitle('');
+    setEditingTitle(false);
+  };
+
+  // 处理标题输入的回车键
+  const handleTitleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveTitle();
+    } else if (e.key === 'Escape') {
+      cancelEditingTitle();
     }
   };
 
@@ -350,9 +458,47 @@ export default function ResumeEditPage({}: EditPageProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Edit Resume</h1>
-              <p className="text-gray-600 mt-1">
-                Editing: <span className="font-medium">{resume.title}</span>
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-gray-600">Editing:</span>
+                {editingTitle ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={tempTitle}
+                      onChange={(e) => setTempTitle(e.target.value)}
+                      onKeyDown={handleTitleKeyPress}
+                      className="font-medium text-gray-900 bg-white border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      placeholder="Enter resume title"
+                      autoFocus
+                    />
+                    <button
+                      onClick={saveTitle}
+                      className="text-green-600 hover:text-green-700 p-1"
+                      title="Save title"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={cancelEditingTitle}
+                      className="text-gray-400 hover:text-gray-600 p-1"
+                      title="Cancel"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900">{resume.title}</span>
+                    <button
+                      onClick={startEditingTitle}
+                      className="text-gray-400 hover:text-gray-600 p-1"
+                      title="Edit title"
+                    >
+                      ✏️
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="flex gap-3">
@@ -364,7 +510,7 @@ export default function ResumeEditPage({}: EditPageProps) {
               </button>
               
               <button
-                onClick={saveResumeData}
+                onClick={handleSaveClick}
                 disabled={saving || !hasUnsavedChanges}
                 className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                   saving || !hasUnsavedChanges
@@ -469,6 +615,68 @@ export default function ResumeEditPage({}: EditPageProps) {
           </div>
         </div>
       </div>
+
+      {/* 保存状态选择对话框 */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Save Resume
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Your resume is {calculateCompletion(resumeDetail)}% complete. 
+                How would you like to save it?
+              </p>
+              
+              <div className="space-y-3 mb-6">
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                    <div>
+                      <p className="font-medium text-gray-900">Save as Draft</p>
+                      <p className="text-sm text-gray-600">Continue editing later</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-3 border border-gray-200 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div>
+                      <p className="font-medium text-gray-900">Mark as Active</p>
+                      <p className="text-sm text-gray-600">Ready for job applications</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSaveDialog(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => saveResumeData('draft')}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:bg-gray-300"
+                >
+                  Save as Draft
+                </button>
+                <button
+                  onClick={() => saveResumeData('active')}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors disabled:bg-gray-300"
+                >
+                  Mark as Active
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
