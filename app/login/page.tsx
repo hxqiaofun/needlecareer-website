@@ -90,7 +90,7 @@ export default function Login() {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-0"
+                className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black"
                 style={{backgroundColor: '#c8ffd2'}}
                 placeholder="Email address"
               />
@@ -104,7 +104,7 @@ export default function Login() {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-0 pr-10"
+                className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black pr-10"
                 style={{backgroundColor: '#c8ffd2'}}
                 placeholder="Password"
               />
