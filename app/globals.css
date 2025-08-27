@@ -24,3 +24,148 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Resume Print Styles */
+/* 将这些样式添加到您的全局CSS文件中 (如 globals.css) */
+
+/* 打印样式优化 */
+@media print {
+  /* 隐藏不需要打印的元素 */
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  /* 移除不必要的内边距 */
+  .print\\:p-0 {
+    padding: 0 !important;
+  }
+  
+  /* 移除阴影效果 */
+  .print\\:shadow-none {
+    box-shadow: none !important;
+  }
+  
+  /* 页面设置 */
+  @page {
+    margin: 0.5in;
+    size: A4;
+  }
+  
+  /* 确保文字清晰 */
+  body {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  /* 防止页面断裂在不合适的位置 */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  
+  /* 段落和列表项避免跨页断裂 */
+  p, li {
+    page-break-inside: avoid;
+  }
+  
+  /* 简历各部分避免跨页断裂 */
+  section {
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+  
+  /* 链接颜色在打印时保持可读性 */
+  a {
+    color: #1f2937 !important;
+    text-decoration: underline;
+  }
+  
+  /* 确保边框在打印时显示 */
+  .border, .border-b, .border-t {
+    border-color: #000 !important;
+  }
+}
+
+/* 简历预览容器样式 */
+.resume-preview-container {
+  /* A4 纸张比例 */
+  max-width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  background: white;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 20mm;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .resume-preview-container {
+    padding: 15mm;
+    box-shadow: none;
+  }
+}
+
+/* 简历模板字体优化 */
+.resume-template {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  line-height: 1.5;
+  color: #1f2937;
+}
+
+/* 简历标题样式 */
+.resume-section-title {
+  border-bottom: 2px solid #1f2937;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.25rem;
+  font-weight: bold;
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* 联系信息图标优化 */
+.contact-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* 技能标签样式 */
+.skill-tag {
+  display: inline-block;
+  background: #f3f4f6;
+  color: #374151;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  margin: 0.125rem;
+}
+
+/* 经验和项目时间线样式 */
+.timeline-item {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.timeline-item:before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 0.5rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: #6b7280;
+  border-radius: 50%;
+}
+
+/* 确保在所有设备上都能正常显示 */
+.resume-content {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* 防止过长的URL断开页面布局 */
+.resume-content a {
+  word-break: break-all;
+}
