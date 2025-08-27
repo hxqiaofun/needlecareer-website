@@ -60,7 +60,7 @@ export default function ResumeManagementPage() {
         setUser(authUser as User);
       } catch (err) {
         console.error('Auth check error:', err);
-        setError('认证检查失败');
+        setError('Authentication check failed');
       }
     };
 
@@ -88,7 +88,7 @@ export default function ResumeManagementPage() {
         setResumes(data || []);
       } catch (err) {
         console.error('获取简历列表失败:', err);
-        setError('获取简历列表失败');
+        setError('Failed to fetch resume list');
       } finally {
         setLoading(false);
       }
@@ -123,13 +123,13 @@ export default function ResumeManagementPage() {
 
     } catch (err) {
       console.error('设置默认简历失败:', err);
-      setError('设置默认简历失败');
+      setError('Failed to set default resume');
     }
   };
 
   // 删除简历
   const deleteResume = async (resumeId: string) => {
-    if (!user || !confirm('确定要删除这份简历吗？此操作不可撤销。')) return;
+    if (!user || !confirm('Are you sure you want to delete this resume? This action cannot be undone.')) return;
 
     try {
       const { error: deleteError } = await supabase
@@ -147,7 +147,7 @@ export default function ResumeManagementPage() {
 
     } catch (err) {
       console.error('删除简历失败:', err);
-      setError('删除简历失败');
+      setError('Failed to delete resume');
     }
   };
 
@@ -166,9 +166,9 @@ export default function ResumeManagementPage() {
   // 获取状态显示
   const getStatusDisplay = (status: string) => {
     const statusMap = {
-      draft: { text: '草稿', color: 'bg-gray-100 text-gray-800' },
-      active: { text: '活跃', color: 'bg-green-100 text-green-800' },
-      archived: { text: '已归档', color: 'bg-yellow-100 text-yellow-800' }
+      draft: { text: 'Draft', color: 'bg-gray-100 text-gray-800' },
+      active: { text: 'Active', color: 'bg-green-100 text-green-800' },
+      archived: { text: 'Archived', color: 'bg-yellow-100 text-yellow-800' }
     };
     return statusMap[status as keyof typeof statusMap] || statusMap.draft;
   };
@@ -181,7 +181,7 @@ export default function ResumeManagementPage() {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">加载中...</p>
+              <p className="mt-4 text-gray-600">Loading...</p>
             </div>
           </div>
         </div>
@@ -198,8 +198,8 @@ export default function ResumeManagementPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">我的简历</h1>
-              <p className="mt-2 text-gray-600">管理您的简历，让雇主更好地了解您</p>
+              <h1 className="text-3xl font-bold text-gray-900">My Resumes</h1>
+              <p className="mt-2 text-gray-600">Manage your resumes and let employers know you better</p>
             </div>
             
             <div className="flex space-x-4">
@@ -207,13 +207,13 @@ export default function ResumeManagementPage() {
                 onClick={() => router.push('/dashboard/student/resumes/upload')}
                 className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
-                上传简历
+                Upload Resume
               </button>
               <button
                 onClick={() => router.push('/dashboard/student/resumes/edit/new')}
                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
-                创建新简历
+                Create New Resume
               </button>
             </div>
           </div>
@@ -236,20 +236,20 @@ export default function ResumeManagementPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">还没有简历</h3>
-              <p className="text-gray-600 mb-6">开始创建您的第一份简历，向雇主展示您的专业能力</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No resumes yet</h3>
+              <p className="text-gray-600 mb-6">Start creating your first resume to showcase your professional skills to employers</p>
               <div className="space-x-4">
                 <button
                   onClick={() => router.push('/dashboard/student/resumes/edit/new')}
                   className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                 >
-                  创建简历
+                  Create Resume
                 </button>
                 <button
                   onClick={() => router.push('/dashboard/student/resumes/upload')}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                 >
-                  上传PDF简历
+                  Upload PDF Resume
                 </button>
               </div>
             </div>
@@ -275,7 +275,7 @@ export default function ResumeManagementPage() {
                           </span>
                           {resume.is_default && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              默认简历
+                              Default Resume
                             </span>
                           )}
                         </div>
@@ -296,16 +296,16 @@ export default function ResumeManagementPage() {
                   <div className="p-6">
                     <div className="space-y-3 text-sm text-gray-600">
                       <div className="flex justify-between">
-                        <span>创建时间:</span>
+                        <span>Created:</span>
                         <span>{formatDate(resume.created_at)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>最后更新:</span>
+                        <span>Last updated:</span>
                         <span>{formatDate(resume.updated_at)}</span>
                       </div>
                       {resume.file_name && (
                         <div className="flex justify-between">
-                          <span>文件:</span>
+                          <span>File:</span>
                           <span className="text-blue-600 truncate max-w-32" title={resume.file_name}>
                             {resume.file_name} ({formatFileSize(resume.file_size)})
                           </span>
@@ -322,13 +322,13 @@ export default function ResumeManagementPage() {
                           onClick={() => router.push(`/dashboard/student/resumes/preview/${resume.id}`)}
                           className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                         >
-                          预览
+                          Preview
                         </button>
                         <button
                           onClick={() => router.push(`/dashboard/student/resumes/edit/${resume.id}`)}
                           className="text-green-600 hover:text-green-700 text-sm font-medium"
                         >
-                          编辑
+                          Edit
                         </button>
                       </div>
                       
@@ -338,14 +338,14 @@ export default function ResumeManagementPage() {
                             onClick={() => setDefaultResume(resume.id)}
                             className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                           >
-                            设为默认
+                            Set as Default
                           </button>
                         )}
                         <button
                           onClick={() => deleteResume(resume.id)}
                           className="text-red-600 hover:text-red-700 text-sm font-medium"
                         >
-                          删除
+                          Delete
                         </button>
                       </div>
                     </div>
@@ -362,25 +362,25 @@ export default function ResumeManagementPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-green-600">{resumes.length}</div>
-                <div className="text-sm text-gray-600">总简历数</div>
+                <div className="text-sm text-gray-600">Total Resumes</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-blue-600">
                   {resumes.filter(r => r.status === 'active').length}
                 </div>
-                <div className="text-sm text-gray-600">活跃简历</div>
+                <div className="text-sm text-gray-600">Active Resumes</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-orange-600">
                   {resumes.filter(r => r.file_url).length}
                 </div>
-                <div className="text-sm text-gray-600">PDF简历</div>
+                <div className="text-sm text-gray-600">PDF Resumes</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-purple-600">
                   {resumes.filter(r => r.is_default).length}
                 </div>
-                <div className="text-sm text-gray-600">默认简历</div>
+                <div className="text-sm text-gray-600">Default Resume</div>
               </div>
             </div>
           </div>
