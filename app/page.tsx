@@ -96,9 +96,9 @@ export default function Home() {
   const heroContent = (
     <>
       <img 
-        src="/images/hi-needle.png" 
-        alt="Hi Needle!" 
-        className="mx-auto mb-8 max-w-full max-h-32 md:max-h-48 lg:max-h-64 object-contain"
+        src="/images/needlecareer.png" 
+        alt="Needlecareer" 
+        className="mx-auto mb-1 max-w-full max-h-32 md:max-h-48 lg:max-h-64 object-contain"
       />
       
       {/* 登录状态欢迎消息 */}
@@ -146,7 +146,7 @@ export default function Home() {
         {/* 标语区域 */}
         <section className="bg-white px-6 py-2">
           <div className="max-w-7xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-black">
+            <h2 className="text-2xl md:text-3xl lg:text-4xl mb-10 text-right font-medium text-[#7b7f80]">
               From overlooked to unforgettable.
             </h2>
           </div>

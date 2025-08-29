@@ -340,12 +340,12 @@ export default function Header({
 
       {/* 可选的英雄区域 */}
       {showHeroSection && (
-        <section className="px-6 pt-14 py-10 md:py-20" style={{backgroundColor: '#c8ffd2'}}>
+        <section className="mt-8 px-6 pt-4 py-3 md:py-6" style={{backgroundColor: '#c8ffd2'}}>
           <div className="max-w-7xl mx-auto text-center">
             {heroContent || (
               <img 
-                src="/images/hi-needle.png" 
-                alt="Hi Needle!" 
+                src="/images/needlecareer.png"
+                alt="Neddlecareer" 
                 className="mx-auto mb-8 max-w-full max-h-32 md:max-h-48 lg:max-h-64 object-contain"
               />
             )}
