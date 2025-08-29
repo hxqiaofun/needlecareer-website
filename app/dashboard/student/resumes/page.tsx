@@ -175,13 +175,13 @@ export default function ResumeManagementPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-white">
         <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
+              <p className="mt-4 text-[#7b7f80] font-medium">Loading...</p>
             </div>
           </div>
         </div>
@@ -190,7 +190,7 @@ export default function ResumeManagementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Header />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -198,20 +198,22 @@ export default function ResumeManagementPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Resumes</h1>
-              <p className="mt-2 text-gray-600">Manage your resumes and let employers know you better</p>
+              <h1 className="text-3xl font-bold text-black">My Resumes</h1>
+              <p className="mt-2 text-[#7b7f80] font-medium">Manage your resumes and let employers know you better</p>
             </div>
             
             <div className="flex space-x-4">
               <button
                 onClick={() => router.push('/dashboard/student/resumes/upload')}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                className="bg-[#c8ffd2] hover:bg-gray-100 text-black px-6 py-2 font-bold transition-colors"
+                style={{ fontFamily: 'PT Sans' }}
               >
                 Upload Resume
               </button>
               <button
                 onClick={() => router.push('/dashboard/student/resumes/edit/new')}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                className="bg-black hover:bg-gray-800 text-[#c8ffd2] px-6 py-2 font-bold transition-colors"
+                style={{ fontFamily: 'PT Sans' }}
               >
                 Create New Resume
               </button>
@@ -231,23 +233,25 @@ export default function ResumeManagementPage() {
           // 空状态
           <div className="text-center py-16">
             <div className="max-w-md mx-auto">
-              <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-20 h-20 mx-auto mb-6 bg-[#c8ffd2] rounded-full flex items-center justify-center">
+                <svg className="w-12 h-12 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No resumes yet</h3>
-              <p className="text-gray-600 mb-6">Start creating your first resume to showcase your professional skills to employers</p>
+              <h3 className="text-xl font-bold text-black mb-2" style={{ fontFamily: 'PT Sans' }}>No resumes yet</h3>
+              <p className="text-[#7b7f80] font-medium mb-6" style={{ fontFamily: 'PT Sans' }}>Start creating your first resume to showcase your professional skills to employers</p>
               <div className="space-x-4">
                 <button
                   onClick={() => router.push('/dashboard/student/resumes/edit/new')}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  className="bg-black hover:bg-gray-800 text-[#c8ffd2] px-6 py-3 font-bold transition-colors"
+                  style={{ fontFamily: 'PT Sans' }}
                 >
                   Create Resume
                 </button>
                 <button
                   onClick={() => router.push('/dashboard/student/resumes/upload')}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  className="bg-[#c8ffd2] hover:bg-gray-100 text-black px-6 py-3 font-bold transition-colors"
+                  style={{ fontFamily: 'PT Sans' }}
                 >
                   Upload PDF Resume
                 </button>
@@ -261,12 +265,12 @@ export default function ResumeManagementPage() {
               const status = getStatusDisplay(resume.status);
               
               return (
-                <div key={resume.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border">
+                <div key={resume.id} className="bg-white rounded-lg shadow-sm border-2 border-[#c8ffd2] hover:opacity-80 transition-opacity">
                   {/* 卡片头部 */}
-                  <div className="p-6 border-b border-gray-200">
+                  <div className="p-8 border-b border-[#c8ffd2]">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        <h3 className="text-lg font-bold text-black truncate" style={{ fontFamily: 'PT Sans' }}>
                           {resume.title}
                         </h3>
                         <div className="flex items-center mt-2 space-x-2">
@@ -274,7 +278,7 @@ export default function ResumeManagementPage() {
                             {status.text}
                           </span>
                           {resume.is_default && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#c8ffd2] text-black">
                               Default Resume
                             </span>
                           )}
@@ -283,8 +287,8 @@ export default function ResumeManagementPage() {
                       
                       {/* 操作下拉菜单 */}
                       <div className="relative ml-3">
-                        <button className="p-1 rounded-full hover:bg-gray-100">
-                          <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                        <button className="p-1 rounded-full hover:bg-[#c8ffd2]">
+                          <svg className="w-5 h-5 text-[#7b7f80]" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                           </svg>
                         </button>
@@ -293,8 +297,8 @@ export default function ResumeManagementPage() {
                   </div>
 
                   {/* 卡片内容 */}
-                  <div className="p-6">
-                    <div className="space-y-3 text-sm text-gray-600">
+                  <div className="p-8">
+                    <div className="space-y-3 text-sm text-[#7b7f80] font-medium" style={{ fontFamily: 'PT Sans' }}>
                       <div className="flex justify-between">
                         <span>Created:</span>
                         <span>{formatDate(resume.created_at)}</span>
@@ -306,7 +310,7 @@ export default function ResumeManagementPage() {
                       {resume.file_name && (
                         <div className="flex justify-between">
                           <span>File:</span>
-                          <span className="text-blue-600 truncate max-w-32" title={resume.file_name}>
+                          <span className="text-black truncate max-w-32 font-bold" title={resume.file_name}>
                             {resume.file_name} ({formatFileSize(resume.file_size)})
                           </span>
                         </div>
@@ -315,18 +319,20 @@ export default function ResumeManagementPage() {
                   </div>
 
                   {/* 卡片操作 */}
-                  <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-lg">
+                  <div className="px-8 py-4 bg-[#c8ffd2] border-t border-[#c8ffd2] rounded-b-lg">
                     <div className="flex items-center justify-between">
                       <div className="flex space-x-2">
                         <button
                           onClick={() => router.push(`/dashboard/student/resumes/preview/${resume.id}`)}
-                          className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          className="text-black hover:text-[#7b7f80] text-sm font-bold"
+                          style={{ fontFamily: 'PT Sans' }}
                         >
                           Preview
                         </button>
                         <button
                           onClick={() => router.push(`/dashboard/student/resumes/edit/${resume.id}`)}
-                          className="text-green-600 hover:text-green-700 text-sm font-medium"
+                          className="text-black hover:text-[#7b7f80] text-sm font-bold"
+                          style={{ fontFamily: 'PT Sans' }}
                         >
                           Edit
                         </button>
@@ -336,14 +342,16 @@ export default function ResumeManagementPage() {
                         {!resume.is_default && (
                           <button
                             onClick={() => setDefaultResume(resume.id)}
-                            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                            className="text-black hover:text-[#7b7f80] text-sm font-bold"
+                            style={{ fontFamily: 'PT Sans' }}
                           >
                             Set as Default
                           </button>
                         )}
                         <button
                           onClick={() => deleteResume(resume.id)}
-                          className="text-red-600 hover:text-red-700 text-sm font-medium"
+                          className="text-red-700 hover:text-red-900 text-sm font-bold"
+                          style={{ fontFamily: 'PT Sans' }}
                         >
                           Delete
                         </button>
@@ -358,29 +366,29 @@ export default function ResumeManagementPage() {
 
         {/* 底部统计信息 */}
         {resumes.length > 0 && (
-          <div className="mt-8 bg-white rounded-lg shadow p-6">
+          <div className="mt-8 bg-white rounded-lg shadow-sm border-2 border-[#c8ffd2] p-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold text-green-600">{resumes.length}</div>
-                <div className="text-sm text-gray-600">Total Resumes</div>
+                <div className="text-2xl font-bold text-black" style={{ fontFamily: 'PT Sans' }}>{resumes.length}</div>
+                <div className="text-sm text-[#7b7f80] font-medium" style={{ fontFamily: 'PT Sans' }}>Total Resumes</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-black" style={{ fontFamily: 'PT Sans' }}>
                   {resumes.filter(r => r.status === 'active').length}
                 </div>
-                <div className="text-sm text-gray-600">Active Resumes</div>
+                <div className="text-sm text-[#7b7f80] font-medium" style={{ fontFamily: 'PT Sans' }}>Active Resumes</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-orange-600">
+                <div className="text-2xl font-bold text-black" style={{ fontFamily: 'PT Sans' }}>
                   {resumes.filter(r => r.file_url).length}
                 </div>
-                <div className="text-sm text-gray-600">PDF Resumes</div>
+                <div className="text-sm text-[#7b7f80] font-medium" style={{ fontFamily: 'PT Sans' }}>PDF Resumes</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-purple-600">
+                <div className="text-2xl font-bold text-black" style={{ fontFamily: 'PT Sans' }}>
                   {resumes.filter(r => r.is_default).length}
                 </div>
-                <div className="text-sm text-gray-600">Default Resume</div>
+                <div className="text-sm text-[#7b7f80] font-medium" style={{ fontFamily: 'PT Sans' }}>Default Resume</div>
               </div>
             </div>
           </div>
