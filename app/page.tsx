@@ -146,7 +146,7 @@ export default function Home() {
         {/* 标语区域 */}
         <section className="bg-white px-6 py-2">
           <div className="max-w-7xl mx-auto text-center">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl mb-10 text-right font-medium text-[#7b7f80]">
+            <h2 className="text-xl md:text-3xl lg:text-4xl mb-10 text-right font-medium text-[#7b7f80]">
               From overlooked to unforgettable.
             </h2>
           </div>
