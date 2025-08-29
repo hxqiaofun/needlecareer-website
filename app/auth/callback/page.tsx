@@ -75,30 +75,45 @@ export default function AuthCallback() {
 
   const createNewUserProfile = async (user: any) => {
     try {
-      // 从 localStorage 获取用户选择的类型
-      const pendingUserType = localStorage.getItem('pendingUserType') || 'student'
-      const pendingCompanyName = localStorage.getItem('pendingCompanyName') || ''
+      // 检查是否从注册页面来的（有预设的用户类型）
+      const pendingUserType = localStorage.getItem('pendingUserType')
+      const pendingCompanyName = localStorage.getItem('pendingCompanyName')
 
-      // 从 Google 获取用户信息
-      const fullName = user.user_metadata?.full_name || user.user_metadata?.name || ''
-      const email = user.email || ''
+      if (pendingUserType) {
+        // 从注册页面来的，直接创建资料
+        const fullName = user.user_metadata?.full_name || user.user_metadata?.name || ''
+        const email = user.email || ''
 
-      // 创建新的 user profile
-      const { error: insertError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: user.id,
+        const { error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: user.id,
+            email: email,
+            full_name: fullName,
+            user_type: pendingUserType,
+            company_name: pendingUserType === 'employer' ? pendingCompanyName : null
+          })
+
+        if (insertError) {
+          throw insertError
+        }
+
+        console.log('New user profile created successfully from registration')
+      } else {
+        // 直接 Google 登录的新用户，需要选择用户类型
+        const fullName = user.user_metadata?.full_name || user.user_metadata?.name || ''
+        const email = user.email || ''
+        
+        // 重定向到用户类型选择页面，传递用户信息
+        const params = new URLSearchParams({
+          userId: user.id,
           email: email,
-          full_name: fullName,
-          user_type: pendingUserType,
-          company_name: pendingUserType === 'employer' ? pendingCompanyName : null
+          fullName: fullName
         })
-
-      if (insertError) {
-        throw insertError
+        
+        router.push(`/select-user-type?${params.toString()}`)
+        return // 不要继续执行后面的代码
       }
-
-      console.log('New user profile created successfully')
     } catch (error) {
       console.error('Error creating user profile:', error)
       throw error
