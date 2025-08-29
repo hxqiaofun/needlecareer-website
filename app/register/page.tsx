@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { PT_Sans } from 'next/font/google'
 import Header from '@/app/components/Header'
 
@@ -12,6 +13,7 @@ const ptSans = PT_Sans({
 })
 
 export default function Register() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -20,6 +22,7 @@ export default function Register() {
     companyName: ''
   })
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [message, setMessage] = useState('')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -42,7 +45,7 @@ export default function Register() {
       })
 
       if (authError) {
-        setMessage('注册失败: ' + authError.message)
+        setMessage('Registration failed: ' + authError.message)
         return
       }
 
@@ -59,17 +62,49 @@ export default function Register() {
           })
 
         if (profileError) {
-          setMessage('资料创建失败: ' + profileError.message)
+          setMessage('Profile creation failed: ' + profileError.message)
           return
         }
 
-        setMessage('注册成功！请检查邮箱进行验证。')
+        setMessage('Registration successful! Please check your email for verification.')
       }
     } catch (error) {
-      setMessage('发生错误，请重试')
-      console.error('注册错误:', error)
+      setMessage('An error occurred, please try again')
+      console.error('Registration error:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGoogleSignUp = async () => {
+    setGoogleLoading(true)
+    setMessage('')
+
+    try {
+      // 将用户选择的类型存储到 localStorage，以便回调时使用
+      localStorage.setItem('pendingUserType', formData.userType)
+      localStorage.setItem('pendingCompanyName', formData.companyName)
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        }
+      })
+
+      if (error) {
+        setMessage('Google sign up failed: ' + error.message)
+        setGoogleLoading(false)
+      }
+      // 如果成功，用户会被重定向到 Google，然后回到 callback 页面
+    } catch (error) {
+      setMessage('Google sign up error, please try again')
+      console.error('Google sign up error:', error)
+      setGoogleLoading(false)
     }
   }
 
@@ -228,25 +263,31 @@ export default function Register() {
                   }`}
                   style={!loading ? {color: '#c8ffd2'} : {}}
                 >
-                  {loading ? 'Signing up...' : 'Sign up'}
+                  {loading ? 'Signing up...' : 'Sign up with Email'}
                 </button>
 
                 {/* OR divider */}
-                <div className="relative mt-1">
+                <div className="relative mt-4">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-gray-400"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
                     <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
                   </div>
-                </div>
+                </div>       
 
-                {/* Continue with Google */}
+                {/* Continue with Google Button */}
                 <button
                   type="button"
-                  className="w-full py-1 mt-1 text-lg font-bold bg-gray-500 text-[#c8ffd2] hover:bg-gray-600 transition-colors"
+                  onClick={handleGoogleSignUp}
+                  disabled={googleLoading}
+                  className={`w-full py-1 mt-4 text-lg font-bold transition-colors ${
+                    googleLoading 
+                      ? 'bg-gray-500 cursor-not-allowed text-white' 
+                      : 'bg-gray-600 text-[#c8ffd2] hover:bg-gray-800'
+                  }`}
                 >
-                  Sign up with Google
+                  {googleLoading ? 'Signing up...' : '🚀 Sign up with Google'}
                 </button>
 
                 {/* Terms and Privacy */}
@@ -260,7 +301,7 @@ export default function Register() {
                 {/* 消息显示 */}
                 {message && (
                   <div className={`p-3 rounded text-sm font-medium ${
-                    message.includes('成功') 
+                    message.includes('successful') 
                       ? 'bg-white text-green-700' 
                       : 'bg-white text-red-700'
                   }`}>

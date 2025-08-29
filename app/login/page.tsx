@@ -13,13 +13,14 @@ const ptSans = PT_Sans({
 })
 
 export default function Login() {
+  const router = useRouter()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   })
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -46,8 +47,9 @@ export default function Login() {
 
       if (data.user) {
         setMessage('Login successful! Redirecting...')
-        // 跳转到首页而不是dashboard
-        router.push('/')
+        setTimeout(() => {
+          router.push('/')
+        }, 1000)
       }
     } catch (error) {
       setMessage('An error occurred, please try again')
@@ -57,124 +59,188 @@ export default function Login() {
     }
   }
 
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true)
+    setMessage('')
+
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        }
+      })
+
+      if (error) {
+        setMessage('Google sign in failed: ' + error.message)
+        setGoogleLoading(false)
+      }
+      // 如果成功，用户会被重定向到 Google，然后回到 callback 页面
+    } catch (error) {
+      setMessage('Google sign in error, please try again')
+      console.error('Google sign in error:', error)
+      setGoogleLoading(false)
+    }
+  }
+
   return (
     <div className={`min-h-screen bg-white ${ptSans.className}`}>
       {/* 使用 Header 组件 */}
       <Header />
 
-      {/* 主要内容区域 */}
-      <main className="bg-gray-50 flex items-center justify-center py-12 px-4">
-        <div className="max-w-sm w-full space-y-2">
-          {/* Needle Logo and Welcome */}
-          <div className="text-center">
-            <div className="mb-1">
-              <img 
-                src="/images/needle_600x116.png" 
-                alt="Needle" 
-                className="h-22 mx-auto object-contain"
-              />
+      {/* 主要内容区域 - 响应式布局 */}
+      <main className="min-h-screen">
+        <div className="grid lg:grid-cols-2 min-h-screen">
+          {/* 左侧 - 品牌介绍区域 (手机端隐藏) */}
+          <div className="hidden lg:flex bg-white items-top justify-center px-8 py-5 lg:py-14">
+            <div className="max-w-md">
+              {/* Needle Logo */}
+              <div className="mb-8">
+                <img 
+                  src="/images/needle_600x116.png" 
+                  alt="Needle" 
+                  className="w-full max-w-xs object-contain"
+                />
+              </div>
+              
+              {/* 标语 */}
+              <div className="mb-8">
+                <p className="text-xl lg:text-2xl text-black font-medium leading-tight">
+                  Welcome back to NeedleCareer.
+                </p>
+                <p className="text-xl lg:text-2xl text-black font-bold mt-2">
+                  Sign in to continue.
+                </p>
+              </div>
+
+              {/* 注册链接 */}
+              <div className="text-sm text-gray-600">
+                Don't have an account?{' '}
+                <Link href="/register" className="text-black font-medium hover:underline transition-colors">
+                  sign up
+                </Link>
+              </div>
             </div>
-            <h1 className="text-4xl font-bold text-black mb-8">Welcome</h1>
-            <p className="text-gray-500 text-xl">
-              Please log in to continue to Needle Career
-            </p>
           </div>
 
-          {/* 登录表单 */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
-            <div>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black"
-                style={{backgroundColor: '#c8ffd2'}}
-                placeholder="Email address"
-              />
-            </div>
+          {/* 右侧 - 登录表单区域 (手机端全宽) */}
+          <div className="flex items-top justify-center px-8 py-14 lg:col-span-1 col-span-2" style={{backgroundColor: '#ffffffff'}}>
+            <div className="w-full max-w-md">
+              {/* 登录表单 */}
+              <div className="space-y-6">
+                {/* Email/Password Login Form */}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-2">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black"
+                      style={{backgroundColor: '#c8ffd2'}}
+                      placeholder="johnsmith@gmail.com"
+                    />
+                  </div>
+                  {/* Password */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-2">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black pr-10"
+                        style={{backgroundColor: '#c8ffd2'}}
+                        placeholder="••••••••"
+                      />
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
+                      >
+                        👁
+                      </button>
+                    </div>
+                  </div>
 
-            {/* Password */}
-            <div className="relative">
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black pr-10"
-                style={{backgroundColor: '#c8ffd2'}}
-                placeholder="Password"
-              />
-              <button
-                type="button"
-                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
-              >
-                👁
-              </button>
-            </div>
+                  {/* Forgot Password */}
+                  <div className="text-right">
+                    <a href="#" className="text-sm text-gray-600 hover:text-black transition-colors">
+                      Forgot password?
+                    </a>
+                  </div>
 
-            {/* Forgot Password */}
-            <div className="text-left">
-              <Link href="#" className="text-sm text-gray-500 hover:text-gray-700">
-                Forgot password?
-              </Link>
-            </div>
+                  {/* Sign in Button */}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className={`w-full py-1 text-lg font-bold transition-colors ${
+                      loading 
+                        ? 'bg-gray-400 cursor-not-allowed text-white' 
+                        : 'bg-black text-white hover:bg-gray-800'
+                    }`}
+                    style={!loading ? {color: '#c8ffd2'} : {}}
+                  >
+                    {loading ? 'Signing in...' : 'Sign in'}
+                  </button>
+                </form>
 
-            {/* Log in Button (Black) */}
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full py-1 text-lg mt-10 font-bold transition-colors ${
-                loading 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-black hover:bg-gray-800'
-              }`}
-              style={!loading ? {color: '#c8ffd2'} : {}}
-            >
-              {loading ? 'Signing in...' : 'Log in'}
-            </button>
-
-            {/* OR divider */}
-              <div className="relative mt-0">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-400"></div>
+                {/* OR divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-400"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
+
+                {/* Continue with Google Button - 置顶 */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={googleLoading}
+                  className={`w-full py-1 text-lg font-bold transition-colors ${
+                    googleLoading 
+                      ? 'bg-gray-500 cursor-not-allowed text-white' 
+                      : 'bg-gray-600 text-[#c8ffd2] hover:bg-gray-800'
+                  }`}
+                >
+                  {googleLoading ? 'Signing in...' : '🚀 Continue with Google'}
+                </button>
+
+                {/* Sign up link */}
+                <div className="text-center text-sm text-gray-600">
+                  Don't have an account?{' '}
+                  <Link href="/register" className="text-black font-medium hover:underline transition-colors">
+                    Sign up
+                  </Link>
                 </div>
+
+                {/* 消息显示 */}
+                {message && (
+                  <div className={`p-3 rounded text-sm font-medium ${
+                    message.includes('successful') 
+                      ? 'bg-white text-green-700' 
+                      : 'bg-white text-red-700'
+                  }`}>
+                    {message}
+                  </div>
+                )}
               </div>
-
-            {/* Login with Google (Gray) */}
-            <button
-              type="button"
-              className="w-full text-lg py-1 bg-gray-500 text-[#c8ffd2] font-bold hover:bg-gray-600 transition-colors"
-            >
-              Log in with Google
-            </button>
-
-            {/* 消息显示 */}
-            {message && (
-              <div className={`p-3 rounded text-sm font-medium text-center ${
-                message.includes('successful') || message.includes('成功')
-                  ? 'bg-green-50 text-green-700' 
-                  : 'bg-red-50 text-red-700'
-              }`}>
-                {message}
-              </div>
-            )}
-          </form>
-
-          {/* Sign up link */}
-          <div className="text-center">
-            <p className="text-sm text-gray-500">
-              Don't have an account?{' '}
-              <Link href="/register" className="text-black font-medium hover:underline">
-                Sign up
-              </Link>
-            </p>
+            </div>
           </div>
         </div>
       </main>
