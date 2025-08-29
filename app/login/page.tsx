@@ -64,10 +64,15 @@ export default function Login() {
     setMessage('')
 
     try {
+      // 只使用生产环境 URL
+      const redirectTo = 'https://needlecareer.com/auth/callback'
+
+      console.log('Redirect URL:', redirectTo) // 调试用
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectTo,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -132,6 +137,30 @@ export default function Login() {
             <div className="w-full max-w-md">
               {/* 登录表单 */}
               <div className="space-y-6">
+                {/* Continue with Google Button - 置顶 */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={googleLoading}
+                  className={`w-full py-2 text-lg font-bold transition-colors ${
+                    googleLoading 
+                      ? 'bg-gray-400 cursor-not-allowed text-white' 
+                      : 'bg-gray-500 text-[#c8ffd2] hover:bg-gray-600'
+                  }`}
+                >
+                  {googleLoading ? 'Signing in...' : '🚀 Continue with Google'}
+                </button>
+
+                {/* OR divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-400"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
+                  </div>
+                </div>
+
                 {/* Email/Password Login Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Email */}
@@ -150,6 +179,7 @@ export default function Login() {
                       placeholder="johnsmith@gmail.com"
                     />
                   </div>
+
                   {/* Password */}
                   <div>
                     <label className="block text-sm font-medium text-gray-800 mb-2">
@@ -186,7 +216,7 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className={`w-full py-1 text-lg font-bold transition-colors ${
+                    className={`w-full py-2 text-lg font-bold transition-colors ${
                       loading 
                         ? 'bg-gray-400 cursor-not-allowed text-white' 
                         : 'bg-black text-white hover:bg-gray-800'
@@ -196,30 +226,6 @@ export default function Login() {
                     {loading ? 'Signing in...' : 'Sign in'}
                   </button>
                 </form>
-
-                {/* OR divider */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-400"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
-                  </div>
-                </div>
-
-                {/* Continue with Google Button - 置顶 */}
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={googleLoading}
-                  className={`w-full py-1 text-lg font-bold transition-colors ${
-                    googleLoading 
-                      ? 'bg-gray-500 cursor-not-allowed text-white' 
-                      : 'bg-gray-600 text-[#c8ffd2] hover:bg-gray-800'
-                  }`}
-                >
-                  {googleLoading ? 'Signing in...' : '🚀 Continue with Google'}
-                </button>
 
                 {/* Sign up link */}
                 <div className="text-center text-sm text-gray-600">

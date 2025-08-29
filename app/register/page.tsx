@@ -85,10 +85,15 @@ export default function Register() {
       localStorage.setItem('pendingUserType', formData.userType)
       localStorage.setItem('pendingCompanyName', formData.companyName)
 
+      // 只使用生产环境 URL
+      const redirectTo = 'https://needlecareer.com/auth/callback'
+
+      console.log('Redirect URL:', redirectTo) // 调试用
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectTo,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -168,6 +173,51 @@ export default function Register() {
                     <option value="student">Student</option>
                     <option value="employer">Employer</option>
                   </select>
+                </div>
+
+                {/* Company Name (Only for employers) */}
+                {formData.userType === 'employer' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-2">
+                      Company Name (for Google sign up)
+                    </label>
+                    <input
+                      type="text"
+                      name="companyName"
+                      value={formData.companyName}
+                      onChange={handleChange}
+                      className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black"
+                      style={{backgroundColor: '#c8ffd2'}}
+                      placeholder="Your Company Name"
+                    />
+                    <p className="text-xs text-gray-600 mt-1">
+                      This will be used if you sign up with Google
+                    </p>
+                  </div>
+                )}
+
+                {/* Continue with Google Button - Moved to top */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignUp}
+                  disabled={googleLoading}
+                  className={`w-full py-2 mt-4 text-lg font-bold transition-colors ${
+                    googleLoading 
+                      ? 'bg-gray-400 cursor-not-allowed text-white' 
+                      : 'bg-gray-500 text-[#c8ffd2] hover:bg-gray-600'
+                  }`}
+                >
+                  {googleLoading ? 'Signing up...' : '🚀 Sign up with Google'}
+                </button>
+
+                {/* OR divider */}
+                <div className="relative mt-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-400"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
+                  </div>
                 </div>
 
                 {/* Email */}
@@ -264,30 +314,6 @@ export default function Register() {
                   style={!loading ? {color: '#c8ffd2'} : {}}
                 >
                   {loading ? 'Signing up...' : 'Sign up with Email'}
-                </button>
-
-                {/* OR divider */}
-                <div className="relative mt-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-400"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
-                  </div>
-                </div>       
-
-                {/* Continue with Google Button */}
-                <button
-                  type="button"
-                  onClick={handleGoogleSignUp}
-                  disabled={googleLoading}
-                  className={`w-full py-1 mt-4 text-lg font-bold transition-colors ${
-                    googleLoading 
-                      ? 'bg-gray-500 cursor-not-allowed text-white' 
-                      : 'bg-gray-600 text-[#c8ffd2] hover:bg-gray-800'
-                  }`}
-                >
-                  {googleLoading ? 'Signing up...' : '🚀 Sign up with Google'}
                 </button>
 
                 {/* Terms and Privacy */}
