@@ -137,29 +137,6 @@ export default function Login() {
             <div className="w-full max-w-md">
               {/* 登录表单 */}
               <div className="space-y-6">
-                {/* Continue with Google Button - 置顶 */}
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={googleLoading}
-                  className={`w-full py-2 text-lg font-bold transition-colors ${
-                    googleLoading 
-                      ? 'bg-gray-400 cursor-not-allowed text-white' 
-                      : 'bg-gray-500 text-[#c8ffd2] hover:bg-gray-600'
-                  }`}
-                >
-                  {googleLoading ? 'Signing in...' : '🚀 Continue with Google'}
-                </button>
-
-                {/* OR divider */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-400"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
-                  </div>
-                </div>
 
                 {/* Email/Password Login Form */}
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -226,6 +203,30 @@ export default function Login() {
                     {loading ? 'Signing in...' : 'Sign in'}
                   </button>
                 </form>
+
+                {/* OR divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-400"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
+                  </div>
+                </div>                   
+
+                {/* Continue with Google Button */}
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={googleLoading}
+                  className={`w-full py-2 text-lg font-bold transition-colors ${
+                    googleLoading 
+                      ? 'bg-gray-500 cursor-not-allowed text-white' 
+                      : 'bg-gray-600 text-[#c8ffd2] hover:bg-gray-800'
+                  }`}
+                >
+                  {googleLoading ? 'Signing in...' : '🚀 Continue with Google'}                  
+                </button>            
 
                 {/* Sign up link */}
                 <div className="text-center text-sm text-gray-600">
