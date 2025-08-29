@@ -237,14 +237,14 @@ export default function Register() {
                     <div className="w-full border-t border-gray-400"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#c8ffd2'}}>OR</span>
+                    <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
                   </div>
                 </div>
 
                 {/* Continue with Google */}
                 <button
                   type="button"
-                  className="w-full py-1 mt-1 text-lg font-bold bg-gray-500 text-white hover:bg-gray-600 transition-colors"
+                  className="w-full py-1 mt-1 text-lg font-bold bg-gray-500 text-[#c8ffd2] hover:bg-gray-600 transition-colors"
                 >
                   Sign up with Google
                 </button>

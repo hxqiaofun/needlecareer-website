@@ -143,14 +143,14 @@ export default function Login() {
                   <div className="w-full border-t border-gray-400"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#c8ffd2'}}>OR</span>
+                  <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
                 </div>
               </div>
 
             {/* Login with Google (Gray) */}
             <button
               type="button"
-              className="w-full text-lg py-1 bg-gray-400 text-white font-bold hover:bg-gray-500 transition-colors"
+              className="w-full text-lg py-1 bg-gray-500 text-[#c8ffd2] font-bold hover:bg-gray-600 transition-colors"
             >
               Log in with Google
             </button>
