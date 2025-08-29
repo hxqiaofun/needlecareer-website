@@ -48,7 +48,7 @@ NeedleCareer 设计系统总结
 背景: #c8ffd2 (品牌绿背景)
 边框: border-0 (无边框)
 圆角: rounded-full (胶囊形)
-焦点: focus:ring-2 focus:ring-black
+焦点: focus:outline-none focus:ring-2 focus:ring-black
 内边距: px-4 py-2
 字体: text-sm
 
@@ -71,6 +71,9 @@ css背景: bg-white
 边框: border-2 (#c8ffd2)
 圆形图标背景: #c8ffd2
 图标容器: w-16 h-16 / w-20 h-20
+
+
+
 
 
 响应式断点
