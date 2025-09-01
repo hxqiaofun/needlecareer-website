@@ -22,7 +22,6 @@ export default function Register() {
     companyName: ''
   })
   const [loading, setLoading] = useState(false)
-  const [googleLoading, setGoogleLoading] = useState(false)
   const [message, setMessage] = useState('')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -73,43 +72,6 @@ export default function Register() {
       console.error('Registration error:', error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleGoogleSignUp = async () => {
-    setGoogleLoading(true)
-    setMessage('')
-
-    try {
-      // 将用户选择的类型存储到 localStorage，以便回调时使用
-      localStorage.setItem('pendingUserType', formData.userType)
-      localStorage.setItem('pendingCompanyName', formData.companyName)
-
-      // 只使用生产环境 URL
-      const redirectTo = 'https://needlecareer.com/auth/callback'
-
-      console.log('Redirect URL:', redirectTo) // 调试用
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectTo,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        }
-      })
-
-      if (error) {
-        setMessage('Google sign up failed: ' + error.message)
-        setGoogleLoading(false)
-      }
-      // 如果成功，用户会被重定向到 Google，然后回到 callback 页面
-    } catch (error) {
-      setMessage('Google sign up error, please try again')
-      console.error('Google sign up error:', error)
-      setGoogleLoading(false)
     }
   }
 
@@ -261,7 +223,7 @@ export default function Register() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`w-full py-1 text-lg font-bold transition-colors mt-18 ${
+                  className={`w-full py-2 text-lg font-bold transition-colors mt-18 ${
                     loading 
                       ? 'bg-gray-400 cursor-not-allowed text-white' 
                       : 'bg-black text-white hover:bg-gray-800'
@@ -279,21 +241,16 @@ export default function Register() {
                   <div className="relative flex justify-center text-sm">
                     <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
                   </div>
-                </div>                  
+                </div>
 
-                {/* Continue with Google Button */}
+               {/* Continue with Google Button - 新的跳转逻辑 */}
                 <button
                   type="button"
-                  onClick={handleGoogleSignUp}
-                  disabled={googleLoading}
-                  className={`w-full py-1 mt-4 text-lg font-bold transition-colors ${
-                    googleLoading 
-                      ? 'bg-gray-500 cursor-not-allowed text-white' 
-                      : 'bg-gray-600 text-[#c8ffd2] hover:bg-gray-800'
-                  }`}
+                  onClick={() => router.push('/google-signup')}
+                  className="w-full py-2 mt-4 text-lg font-bold bg-gray-500 text-[#c8ffd2] hover:bg-gray-600 transition-colors"
                 >
-                  {googleLoading ? 'Signing up...' : '🚀 Sign up with Google'}
-                </button>    
+                  🚀 Sign up with Google
+                </button>
 
                 {/* Terms and Privacy */}
                 <p className="text-xs text-gray-600 mt-4 leading-relaxed">
