@@ -58,20 +58,30 @@ export default function AuthCallback() {
           if (!existingProfile) {
             console.log('New user detected, creating profile...') // 调试日志
             // 新用户，需要创建 profile
-            await createNewUserProfile(session.user)
+            const shouldRedirectToHome = await createNewUserProfile(session.user)
+            
+            // 只有在没有重定向到用户选择页面时才重定向到首页
+            if (shouldRedirectToHome) {
+              // 清理 localStorage
+              localStorage.removeItem('pendingUserType')
+              localStorage.removeItem('pendingCompanyName')
+              
+              console.log('Redirecting to home...') // 调试日志
+              router.push('/')
+            }
           } else {
             console.log('Existing user detected, updating...') // 调试日志
             // 现有用户，检查是否需要更新信息
             await handleExistingUser(existingProfile, session.user)
+            
+            // 清理 localStorage
+            localStorage.removeItem('pendingUserType')
+            localStorage.removeItem('pendingCompanyName')
+
+            // 重定向到首页
+            console.log('Redirecting to home...') // 调试日志
+            router.push('/')
           }
-
-          // 清理 localStorage
-          localStorage.removeItem('pendingUserType')
-          localStorage.removeItem('pendingCompanyName')
-
-          // 重定向到首页（只有在成功创建/更新用户后才执行）
-          console.log('Redirecting to home...') // 调试日志
-          router.push('/')
         } else {
           console.log('No user session found') // 调试日志
           setError('No user session found. Please try again.')
@@ -87,7 +97,7 @@ export default function AuthCallback() {
     handleAuthCallback()
   }, [router])
 
-  const createNewUserProfile = async (user: any) => {
+  const createNewUserProfile = async (user: any): Promise<boolean> => {
     try {
       // 检查是否从注册页面来的（有预设的用户类型）
       const pendingUserType = localStorage.getItem('pendingUserType')
@@ -117,6 +127,7 @@ export default function AuthCallback() {
         }
 
         console.log('New user profile created successfully from registration')
+        return true // 返回 true 表示应该重定向到首页
       } else {
         console.log('No pending user type, redirecting to user type selection...') // 调试日志
         // 直接 Google 登录的新用户，需要选择用户类型
@@ -132,7 +143,7 @@ export default function AuthCallback() {
         
         console.log('Redirecting to select user type with params:', params.toString()) // 调试日志
         router.push(`/select-user-type?${params.toString()}`)
-        return // 不要继续执行后面的代码
+        return false // 返回 false 表示不要重定向到首页
       }
     } catch (error) {
       console.error('Error creating user profile:', error)
