@@ -253,7 +253,7 @@ export default function ResumeManagementPage() {
                   className="bg-[#c8ffd2] hover:bg-gray-100 text-black px-6 py-3 font-bold transition-colors"
                   style={{ fontFamily: 'PT Sans' }}
                 >
-                  Upload PDF Resume
+                  Upload Resume
                 </button>
               </div>
             </div>
