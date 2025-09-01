@@ -112,7 +112,7 @@ function UserTypeForm() {
                   style={{accentColor: '#c8ffd2'}}
                 />
                 <div>
-                  <div className="font-medium text-gray-900">🎓 Student / Job Seeker</div>
+                  <div className="font-medium text-gray-900">🎓 Student</div>
                   <div className="text-sm text-gray-600">Looking for job opportunities</div>
                 </div>
               </div>
@@ -137,7 +137,7 @@ function UserTypeForm() {
                   style={{accentColor: '#c8ffd2'}}
                 />
                 <div>
-                  <div className="font-medium text-gray-900">🏢 Employer / Recruiter</div>
+                  <div className="font-medium text-gray-900">🏢 Employer</div>
                   <div className="text-sm text-gray-600">Looking to hire talent</div>
                 </div>
               </div>
