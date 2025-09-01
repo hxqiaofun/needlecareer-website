@@ -17,9 +17,14 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
+      console.log('Auth callback started') // 调试日志
+      
       try {
         // 处理 OAuth 回调
         const { data, error } = await supabase.auth.getSession()
+        
+        console.log('Session data:', data) // 调试日志
+        console.log('Session error:', error) // 调试日志
         
         if (error) {
           console.error('Auth callback error:', error)
@@ -30,12 +35,17 @@ export default function AuthCallback() {
 
         const session = data.session
         if (session?.user) {
+          console.log('User found:', session.user) // 调试日志
+          
           // 检查用户是否已有 profile
           const { data: existingProfile, error: profileError } = await supabase
             .from('user_profiles')
             .select('*')
             .eq('id', session.user.id)
             .single()
+
+          console.log('Existing profile:', existingProfile) // 调试日志
+          console.log('Profile error:', profileError) // 调试日志
 
           if (profileError && profileError.code !== 'PGRST116') {
             // PGRST116 = no rows returned, which is expected for new users
@@ -46,9 +56,11 @@ export default function AuthCallback() {
           }
 
           if (!existingProfile) {
+            console.log('New user detected, creating profile...') // 调试日志
             // 新用户，需要创建 profile
             await createNewUserProfile(session.user)
           } else {
+            console.log('Existing user detected, updating...') // 调试日志
             // 现有用户，检查是否需要更新信息
             await handleExistingUser(existingProfile, session.user)
           }
@@ -57,9 +69,11 @@ export default function AuthCallback() {
           localStorage.removeItem('pendingUserType')
           localStorage.removeItem('pendingCompanyName')
 
-          // 重定向到首页
+          // 重定向到首页（只有在成功创建/更新用户后才执行）
+          console.log('Redirecting to home...') // 调试日志
           router.push('/')
         } else {
+          console.log('No user session found') // 调试日志
           setError('No user session found. Please try again.')
           setLoading(false)
         }
@@ -79,7 +93,11 @@ export default function AuthCallback() {
       const pendingUserType = localStorage.getItem('pendingUserType')
       const pendingCompanyName = localStorage.getItem('pendingCompanyName')
 
+      console.log('Pending user type:', pendingUserType) // 调试日志
+      console.log('Pending company name:', pendingCompanyName) // 调试日志
+
       if (pendingUserType) {
+        console.log('Creating profile with pending user type...') // 调试日志
         // 从注册页面来的，直接创建资料
         const fullName = user.user_metadata?.full_name || user.user_metadata?.name || ''
         const email = user.email || ''
@@ -100,6 +118,7 @@ export default function AuthCallback() {
 
         console.log('New user profile created successfully from registration')
       } else {
+        console.log('No pending user type, redirecting to user type selection...') // 调试日志
         // 直接 Google 登录的新用户，需要选择用户类型
         const fullName = user.user_metadata?.full_name || user.user_metadata?.name || ''
         const email = user.email || ''
@@ -111,6 +130,7 @@ export default function AuthCallback() {
           fullName: fullName
         })
         
+        console.log('Redirecting to select user type with params:', params.toString()) // 调试日志
         router.push(`/select-user-type?${params.toString()}`)
         return // 不要继续执行后面的代码
       }
