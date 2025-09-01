@@ -340,7 +340,7 @@ export default function Header({
 
       {/* 可选的英雄区域 */}
       {showHeroSection && (
-        <section className="mt-8 px-6 pt-10 py-16 md:py-8" style={{backgroundColor: '#c8ffd2'}}>
+        <section className="mt-8 px-6 pt-8 py-16 md:py-14" style={{backgroundColor: '#c8ffd2'}}>
           <div className="max-w-7xl mx-auto text-center">
             {heroContent || (
               <img 
