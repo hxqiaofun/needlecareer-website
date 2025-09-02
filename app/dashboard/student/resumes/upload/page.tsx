@@ -23,12 +23,25 @@ interface UploadFile {
   error?: string;
 }
 
+interface Resume {
+  id: string;
+  title: string;
+  file_url?: string;
+  file_name?: string;
+  file_size?: number;
+  status: 'draft' | 'active' | 'archived';
+  created_at: string;
+  updated_at: string;
+}
+
 export default function ResumeUploadPage() {
   const [user, setUser] = useState<User | null>(null);
   const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
+  const [existingResumes, setExistingResumes] = useState<Resume[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -66,6 +79,33 @@ export default function ResumeUploadPage() {
 
     checkUser();
   }, [router]);
+
+  // 获取现有的已上传简历
+  useEffect(() => {
+    const fetchExistingResumes = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('resumes')
+          .select('id, title, file_url, file_name, file_size, status, created_at, updated_at')
+          .eq('student_id', user.id)
+          .not('file_url', 'is', null) // 只显示有文件的简历
+          .order('created_at', { ascending: false });
+
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        setExistingResumes(data || []);
+      } catch (err) {
+        console.error('获取已上传文件失败:', err);
+        // 不显示错误，因为这不影响上传功能
+      }
+    };
+
+    fetchExistingResumes();
+  }, [user]);
 
   // 文件验证函数
   const validateFile = (file: File): string | null => {
@@ -225,6 +265,20 @@ export default function ResumeUploadPage() {
         f.id === id ? { ...f, status: 'completed' as const, progress: 100 } : f
       ));
 
+      // 刷新已上传文件列表
+      const { data: updatedResumes } = await supabase
+        .from('resumes')
+        .select('id, title, file_url, file_name, file_size, status, created_at, updated_at')
+        .eq('student_id', user.id)
+        .not('file_url', 'is', null)
+        .order('created_at', { ascending: false });
+
+      if (updatedResumes) {
+        setExistingResumes(updatedResumes);
+      }
+
+      setSuccessMessage(`${file.name} uploaded successfully!`);
+
     } catch (err: any) {
       console.error('Upload failed:', err);
       setUploadFiles(prev => prev.map(f => 
@@ -237,21 +291,134 @@ export default function ResumeUploadPage() {
     }
   };
 
+  // 删除已上传的简历文件
+  const deleteExistingResume = async (resumeId: string, fileName: string) => {
+    if (!user || !confirm(`Are you sure you want to delete "${fileName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      // 获取要删除的简历信息
+      const resumeToDelete = existingResumes.find(r => r.id === resumeId);
+      if (!resumeToDelete || !resumeToDelete.file_url) return;
+
+      // 从 file_url 中提取正确的文件路径
+      // file_url 格式: https://xxx.supabase.co/storage/v1/object/public/resume-files/user_id/filename
+      const urlParts = resumeToDelete.file_url.split('/');
+      const bucketIndex = urlParts.findIndex(part => part === 'resume-files');
+      
+      if (bucketIndex === -1) {
+        throw new Error('Invalid file URL format');
+      }
+
+      // 获取 bucket 之后的路径部分，并解码 URL 编码
+      const encodedPath = urlParts.slice(bucketIndex + 1).join('/');
+      const filePath = decodeURIComponent(encodedPath); // 解码 URL 编码
+      
+      console.log('原始 URL 路径:', encodedPath);
+      console.log('解码后文件路径:', filePath);
+
+      // 尝试两种路径格式删除文件
+      let storageError = null;
+
+      // 方法1：使用解码后的路径
+      const { error: error1 } = await supabase.storage
+        .from('resume-files')
+        .remove([filePath]);
+
+      if (error1) {
+        console.log('解码路径删除失败，尝试编码路径:', error1);
+        
+        // 方法2：使用原始编码路径
+        const { error: error2 } = await supabase.storage
+          .from('resume-files')
+          .remove([encodedPath]);
+
+        if (error2) {
+          storageError = error2;
+          console.error('两种路径都删除失败:', { error1, error2 });
+        } else {
+          console.log('使用编码路径删除成功');
+        }
+      } else {
+        console.log('使用解码路径删除成功');
+      }
+
+      // 如果 Storage 删除失败，仍然提醒用户但继续删除数据库记录
+      if (storageError) {
+        console.warn('Storage file deletion failed, but continuing with database cleanup:', storageError);
+      }
+
+      // 从数据库中删除简历记录
+      const { error: dbError } = await supabase
+        .from('resumes')
+        .delete()
+        .eq('id', resumeId)
+        .eq('student_id', user.id);
+
+      if (dbError) {
+        throw dbError;
+      }
+
+      // 更新本地状态
+      setExistingResumes(prev => prev.filter(r => r.id !== resumeId));
+      
+      if (storageError) {
+        setSuccessMessage(`${fileName} record deleted successfully! (Note: Storage file may still exist)`);
+      } else {
+        setSuccessMessage(`${fileName} deleted successfully!`);
+      }
+
+    } catch (err: any) {
+      console.error('删除文件失败:', err);
+      setError(`Failed to delete ${fileName}: ${err.message}`);
+    }
+  };
+
+  // 清除消息
+  const clearMessages = () => {
+    setError(null);
+    setSuccessMessage(null);
+  };
+
   // 开始上传所有文件
   const startUpload = async () => {
     const filesToUpload = uploadFiles.filter(f => f.status === 'waiting');
     
+    clearMessages(); // 清除之前的消息
+
     for (const file of filesToUpload) {
       await uploadFile(file);
     }
 
     // 检查是否所有文件都上传完成
     const allCompleted = uploadFiles.every(f => f.status === 'completed' || f.status === 'error');
-    if (allCompleted) {
-      // 延迟跳转，让用户看到完成状态
-      setTimeout(() => {
-        router.push('/dashboard/student/resumes');
-      }, 1500);
+    const hasSuccessfulUploads = uploadFiles.some(f => f.status === 'completed');
+    
+    if (allCompleted && hasSuccessfulUploads) {
+      // 可选择性跳转或留在页面
+      // setTimeout(() => {
+      //   router.push('/dashboard/student/resumes');
+      // }, 2000);
+    }
+  };
+
+  // 格式化日期
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // 获取文件状态颜色
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'draft': return 'bg-gray-100 text-gray-800';
+      case 'archived': return 'bg-yellow-100 text-yellow-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -342,10 +509,32 @@ export default function ResumeUploadPage() {
           </div>
         </div>
 
-        {/* 错误提示 */}
+        {/* 错误和成功提示 */}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={clearMessages}
+              className="text-red-700 hover:text-red-900"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center justify-between">
+            <span>{successMessage}</span>
+            <button
+              onClick={clearMessages}
+              className="text-green-700 hover:text-green-900"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
 
@@ -402,14 +591,116 @@ export default function ResumeUploadPage() {
           </div>
         </div>
 
-        {/* 文件列表 */}
+        {/* 已上传的文件列表 */}
+        {existingResumes.length > 0 && (
+          <div className="mb-8">
+            <div className="bg-white rounded-lg shadow-sm border-2 border-[#c8ffd2]">
+              <div className="p-6 border-b border-[#c8ffd2]">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-black" style={{ fontFamily: 'PT Sans' }}>
+                    Previously Uploaded Files ({existingResumes.length})
+                  </h3>
+                  <div className="text-sm text-[#7b7f80] font-medium" style={{ fontFamily: 'PT Sans' }}>
+                    {existingResumes.reduce((total, resume) => total + (resume.file_size || 0), 0) > 0 && 
+                      `Total size: ${formatFileSize(existingResumes.reduce((total, resume) => total + (resume.file_size || 0), 0))}`
+                    }
+                  </div>
+                </div>
+              </div>
+              
+              <div className="divide-y divide-[#c8ffd2]">
+                {existingResumes.map((resume) => (
+                  <div key={resume.id} className="p-6 hover:bg-[#c8ffd2] hover:bg-opacity-10 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        {/* 文件图标 */}
+                        <div className="flex-shrink-0">
+                          {resume.file_name?.toLowerCase().endsWith('.pdf') ? (
+                            <svg className="w-8 h-8 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M4 18h12V6l-4-4H4v16zM9 13h2v-3h-2v3zm0-4h2V6H9v3z"/>
+                            </svg>
+                          ) : (
+                            <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M4 18h12V6l-4-4H4v16zM9 13h2v-3h-2v3zm0-4h2V6H9v3z"/>
+                            </svg>
+                          )}
+                        </div>
+                        
+                        {/* 文件信息 */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-bold text-black truncate" style={{ fontFamily: 'PT Sans' }}>
+                            {resume.file_name}
+                          </h4>
+                          <div className="flex items-center space-x-4 mt-1">
+                            <span className="text-sm text-[#7b7f80] font-medium" style={{ fontFamily: 'PT Sans' }}>
+                              {formatFileSize(resume.file_size || 0)}
+                            </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${getStatusColor(resume.status)}`}>
+                              {resume.status}
+                            </span>
+                            <span className="text-sm text-[#7b7f80] font-medium" style={{ fontFamily: 'PT Sans' }}>
+                              Uploaded: {formatDate(resume.created_at)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* 操作按钮 */}
+                      <div className="flex items-center space-x-2">
+                        {/* 预览按钮 */}
+                        <button
+                          onClick={() => router.push(`/dashboard/student/resumes/preview/${resume.id}`)}
+                          className="text-black hover:text-[#7b7f80] text-sm font-bold transition-colors"
+                          style={{ fontFamily: 'PT Sans' }}
+                        >
+                          Preview
+                        </button>
+                        
+                        {/* 编辑按钮 */}
+                        <button
+                          onClick={() => router.push(`/dashboard/student/resumes/edit/${resume.id}`)}
+                          className="text-black hover:text-[#7b7f80] text-sm font-bold transition-colors"
+                          style={{ fontFamily: 'PT Sans' }}
+                        >
+                          Edit
+                        </button>
+                        
+                        {/* 下载按钮 */}
+                        {resume.file_url && (
+                          <a
+                            href={resume.file_url}
+                            download={resume.file_name}
+                            className="text-black hover:text-[#7b7f80] text-sm font-bold transition-colors"
+                            style={{ fontFamily: 'PT Sans' }}
+                          >
+                            Download
+                          </a>
+                        )}
+                        
+                        {/* 删除按钮 */}
+                        <button
+                          onClick={() => deleteExistingResume(resume.id, resume.file_name || 'Unknown')}
+                          className="text-red-700 hover:text-red-900 text-sm font-bold transition-colors"
+                          style={{ fontFamily: 'PT Sans' }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* 新上传文件列表 */}
         {uploadFiles.length > 0 && (
           <div className="mb-8">
             <div className="bg-white rounded-lg shadow-sm border-2 border-[#c8ffd2]">
               <div className="p-6 border-b border-[#c8ffd2]">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-black" style={{ fontFamily: 'PT Sans' }}>
-                    Files to Upload ({uploadFiles.length})
+                    New Files to Upload ({uploadFiles.length})
                   </h3>
                   {uploadFiles.some(f => f.status === 'waiting') && (
                     <button
@@ -502,8 +793,9 @@ export default function ResumeUploadPage() {
             <li>• Maximum file size: 10MB per file</li>
             <li>• You can upload multiple files at once</li>
             <li>• Each file will create a new resume entry</li>
+            <li>• Previously uploaded files are shown above with management options</li>
+            <li>• You can preview, edit, download, or delete existing files</li>
             <li>• Files are securely stored and only accessible by you</li>
-            <li>• After upload, you can edit resume details or preview them</li>
           </ul>
         </div>
       </div>
