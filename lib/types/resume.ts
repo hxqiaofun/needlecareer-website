@@ -1,4 +1,6 @@
-// 简历管理系统的 TypeScript 类型定义
+// lib/types/resume.ts
+
+// ==================== 基础数据类型 ====================
 
 export interface Resume {
   id: string;
@@ -8,7 +10,7 @@ export interface Resume {
   file_url?: string;
   file_name?: string;
   file_size?: number;
-  status: 'draft' | 'active' | 'archived';
+  status: ResumeStatus;
   created_at: string;
   updated_at: string;
 }
@@ -30,29 +32,23 @@ export interface ResumeDetail {
   professional_summary?: string;
   career_objective?: string;
   
-  // 技能信息
+  // JSON 格式存储的结构化数据
   skills: SkillCategory[];
-  
-  // 教育背景
   education: Education[];
-  
-  // 工作经历
-  experience: WorkExperience[];
-  
-  // 项目经历
+  experience: Experience[];
   projects: Project[];
-  
-  // 证书和奖项
   certifications: Certification[];
+  languages: Language[];
   
   // 其他信息
-  languages: Language[];
   interests?: string;
   reference_contacts?: string;
   
   created_at: string;
   updated_at: string;
 }
+
+// ==================== JSON 数据结构类型 ====================
 
 export interface SkillCategory {
   category: string;
@@ -69,13 +65,13 @@ export interface Education {
   description?: string;
 }
 
-export interface WorkExperience {
+export interface Experience {
   company: string;
   position: string;
   start_date: string;
   end_date: string;
   description: string;
-  achievements: string[];
+  achievements?: string[];
 }
 
 export interface Project {
@@ -92,98 +88,183 @@ export interface Certification {
   name: string;
   issuer: string;
   date: string;
-  credential_id?: string;
   url?: string;
 }
 
 export interface Language {
   language: string;
-  proficiency: 'Basic' | 'Conversational' | 'Fluent' | 'Native';
+  proficiency: 'Beginner' | 'Intermediate' | 'Advanced' | 'Native';
 }
 
-export interface ResumeTemplate {
+// ==================== 文件上传相关类型 ==================== ✨ 新增
+
+export interface UploadFile {
+  file: File;
   id: string;
-  name: string;
-  description?: string;
-  preview_image_url?: string;
-  is_active: boolean;
-  created_at: string;
+  progress: number;
+  status: UploadStatus;
+  error?: string;
 }
 
-// 表单相关类型
+export interface FileValidationResult {
+  isValid: boolean;
+  error?: string;
+}
+
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+  percentage: number;
+}
+
+export interface StorageUploadResult {
+  success: boolean;
+  filePath?: string;
+  publicUrl?: string;
+  error?: string;
+}
+
+export interface ResumeUploadResult {
+  success: boolean;
+  resumeId?: string;
+  resume?: Resume;
+  error?: string;
+}
+
+// ==================== 枚举和常量类型 ====================
+
+export type ResumeStatus = 'draft' | 'active' | 'archived';
+
+export type UploadStatus = 'waiting' | 'uploading' | 'completed' | 'error';
+
+// 支持的文件类型
+export const SUPPORTED_FILE_TYPES = {
+  PDF: 'application/pdf',
+  DOC: 'application/msword',
+  DOCX: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+} as const;
+
+export type SupportedFileType = typeof SUPPORTED_FILE_TYPES[keyof typeof SUPPORTED_FILE_TYPES];
+
+// 文件上传配置
+export interface UploadConfig {
+  maxFileSize: number; // bytes
+  allowedTypes: SupportedFileType[];
+  maxFiles: number;
+  bucketName: string;
+}
+
+// 默认上传配置
+export const DEFAULT_UPLOAD_CONFIG: UploadConfig = {
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  allowedTypes: Object.values(SUPPORTED_FILE_TYPES),
+  maxFiles: 10,
+  bucketName: 'resume-files'
+};
+
+// ==================== 表单相关类型 ====================
+
 export interface ResumeFormData {
   title: string;
-  status: 'draft' | 'active' | 'archived';
+  status: ResumeStatus;
   is_default: boolean;
-  details: Partial<ResumeDetail>;
+  
+  // 基本信息
+  full_name: string;
+  email: string;
+  phone: string;
+  location: string;
+  website: string;
+  linkedin_url: string;
+  github_url: string;
+  
+  // 职业概述
+  professional_summary: string;
+  career_objective: string;
+  
+  // 结构化数据
+  skills: SkillCategory[];
+  education: Education[];
+  experience: Experience[];
+  projects: Project[];
+  certifications: Certification[];
+  languages: Language[];
+  
+  // 其他信息
+  interests: string;
+  reference_contacts: string;
 }
 
-// API 响应类型
-export interface ResumeListResponse {
-  data: Resume[];
-  count: number;
+export interface FormValidation {
+  isValid: boolean;
+  errors: { [key: string]: string };
 }
 
-export interface ResumeResponse {
+// ==================== API 响应类型 ====================
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface ResumeListResponse extends ApiResponse<Resume[]> {}
+
+export interface ResumeDetailResponse extends ApiResponse<{
   resume: Resume;
-  details?: ResumeDetail;
+  details: ResumeDetail;
+}> {}
+
+export interface UploadResponse extends ApiResponse<{
+  resume: Resume;
+  uploadedFiles: Array<{
+    fileName: string;
+    fileSize: number;
+    fileUrl: string;
+  }>;
+}> {}
+
+// ==================== 用户界面相关类型 ====================
+
+export interface ResumeCardProps {
+  resume: Resume;
+  onEdit: (resumeId: string) => void;
+  onPreview: (resumeId: string) => void;
+  onDelete: (resumeId: string) => void;
+  onSetDefault: (resumeId: string) => void;
 }
 
-// 文件上传相关类型
-export interface FileUploadConfig {
-  maxSize: number; // 字节
-  allowedTypes: string[];
-  uploadPath: string;
+export interface UploadDropzoneProps {
+  onFileSelect: (files: FileList) => void;
+  isDragOver: boolean;
+  isUploading: boolean;
+  acceptedTypes: string;
+  maxSize: number;
 }
 
-export interface UploadedFile {
-  file: File;
-  url: string;
-  name: string;
-  size: number;
+export interface FileListProps {
+  files: UploadFile[];
+  onRemoveFile: (fileId: string) => void;
+  onRetryUpload: (fileId: string) => void;
 }
 
-// 表单验证错误类型
-export interface ValidationError {
-  field: string;
-  message: string;
+// ==================== 工具函数类型 ====================
+
+export interface FileUtils {
+  validateFile: (file: File, config?: UploadConfig) => FileValidationResult;
+  formatFileSize: (bytes: number) => string;
+  getFileExtension: (fileName: string) => string;
+  generateFileName: (originalName: string, userId: string) => string;
 }
 
-export interface FormErrors {
-  [key: string]: string | ValidationError[];
+export interface UploadUtils {
+  uploadToStorage: (file: File, filePath: string) => Promise<StorageUploadResult>;
+  createResumeRecord: (uploadData: Partial<Resume>) => Promise<ResumeUploadResult>;
+  generateUploadPath: (userId: string, fileName: string) => string;
 }
 
-// 简历预览配置
-export interface PreviewConfig {
-  template: string;
-  showContactInfo: boolean;
-  showSkills: boolean;
-  showEducation: boolean;
-  showExperience: boolean;
-  showProjects: boolean;
-  showCertifications: boolean;
-}
-
-// 导出格式选项
-export type ExportFormat = 'pdf' | 'docx' | 'txt';
-
-export interface ExportOptions {
-  format: ExportFormat;
-  template?: string;
-  includePhoto?: boolean;
-  pageSize?: 'A4' | 'Letter';
-}
-
-// 搜索和筛选相关类型
-export interface ResumeSearchFilters {
-  status?: Resume['status'];
-  is_default?: boolean;
-  has_file?: boolean;
-  date_range?: {
-    start: string;
-    end: string;
-  };
-}
+// ==================== 统计数据类型 ====================
 
 export interface ResumeStats {
   total: number;
@@ -191,61 +272,31 @@ export interface ResumeStats {
   draft: number;
   archived: number;
   withFiles: number;
-  defaultResumes: number;
+  defaultCount: number;
 }
 
-// Hook 返回类型
-export interface UseResumeReturn {
-  resumes: Resume[];
-  loading: boolean;
-  error: string | null;
-  fetchResumes: () => Promise<void>;
-  createResume: (data: Partial<Resume>) => Promise<Resume>;
-  updateResume: (id: string, data: Partial<Resume>) => Promise<Resume>;
-  deleteResume: (id: string) => Promise<void>;
-  setDefaultResume: (id: string) => Promise<void>;
+export interface UploadStats {
+  totalUploaded: number;
+  totalSize: number;
+  successRate: number;
+  averageUploadTime: number;
 }
 
-export interface UseResumeDetailReturn {
-  resume: Resume | null;
-  details: ResumeDetail | null;
-  loading: boolean;
-  error: string | null;
-  fetchResumeDetail: (id: string) => Promise<void>;
-  updateResumeDetail: (data: Partial<ResumeDetail>) => Promise<void>;
-  saveResume: () => Promise<void>;
+// ==================== 错误处理类型 ====================
+
+export interface ResumeError {
+  type: 'validation' | 'upload' | 'database' | 'network' | 'auth';
+  message: string;
+  field?: string;
+  code?: string;
 }
 
-// 常量定义
-export const RESUME_STATUS_OPTIONS = [
-  { value: 'draft', label: '草稿' },
-  { value: 'active', label: '活跃' },
-  { value: 'archived', label: '已归档' }
-] as const;
+export interface UploadError extends ResumeError {
+  type: 'upload';
+  fileName?: string;
+  fileSize?: number;
+}
 
-export const SKILL_CATEGORIES = [
-  '编程语言',
-  '框架/库',
-  '数据库',
-  '工具/软件',
-  '云服务',
-  '软技能',
-  '其他'
-] as const;
+// ==================== 导出常量 ====================
 
-export const PROFICIENCY_LEVELS = [
-  { value: 'Basic', label: '基础' },
-  { value: 'Conversational', label: '对话' },
-  { value: 'Fluent', label: '流利' },
-  { value: 'Native', label: '母语' }
-] as const;
-
-export const FILE_UPLOAD_CONFIG: FileUploadConfig = {
-  maxSize: 5 * 1024 * 1024, // 5MB
-  allowedTypes: [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-  ],
-  uploadPath: 'resumes'
-};
+// 注意：接口会自动导出，无需在 export type 中重复声明
