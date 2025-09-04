@@ -60,6 +60,7 @@ export class PDFExtractor implements FileExtractor {
       const arrayBuffer = await this.readFileAsArrayBuffer(file);
       
       // 使用 PDF.js 解析 PDF
+      // 这里传递的 arrayBuffer 是原始的，如果 PDF.js 失败，需要确保 fallbackPDFExtraction 收到未分离的 buffer
       const pdfText = await this.parsePDFContent(arrayBuffer);
       
       // 处理提取的文本
@@ -123,8 +124,11 @@ export class PDFExtractor implements FileExtractor {
    * 使用浏览器的 PDF.js 解析 PDF 内容
    * 注意：这需要在实际环境中引入 pdfjs-dist 库
    */
-  private async parsePDFContent(arrayBuffer: ArrayBuffer): Promise<string> {
+  private async parsePDFContent(originalArrayBuffer: ArrayBuffer): Promise<string> {
     try {
+      // 创建一个副本用于 PDF.js 处理，以避免原始 ArrayBuffer 被意外分离 (detached)
+      const pdfjsProcessingBuffer = originalArrayBuffer.slice(0); // <-- 新增此行
+      
       // 这里使用动态导入 PDF.js
       // 在实际使用时需要安装: npm install pdfjs-dist
       const pdfjsLib = await import('pdfjs-dist');
@@ -137,7 +141,7 @@ export class PDFExtractor implements FileExtractor {
 
       // 加载 PDF 文档
       const pdf = await pdfjsLib.getDocument({
-        data: arrayBuffer,
+        data: pdfjsProcessingBuffer, // <-- 这里使用副本
         verbosity: 0 // 减少控制台输出
       }).promise;
 
@@ -166,9 +170,10 @@ export class PDFExtractor implements FileExtractor {
       return fullText;
 
     } catch (error) {
-      // 如果 PDF.js 不可用，提供降级方案
-      console.warn('PDF.js not available, using fallback method');
-      return this.fallbackPDFExtraction(arrayBuffer);
+      // 如果 PDF.js 不可用或失败，使用降级方案
+      // 此时 originalArrayBuffer 仍然可用且未被分离
+      console.warn('PDF.js not available or failed, using fallback method. Error:', error);
+      return this.fallbackPDFExtraction(originalArrayBuffer); // <-- 这里使用原始的 ArrayBuffer
     }
   }
 
@@ -178,11 +183,12 @@ export class PDFExtractor implements FileExtractor {
    */
   private async fallbackPDFExtraction(arrayBuffer: ArrayBuffer): Promise<string> {
     // 尝试多种编码方式
-    const uint8Array = new Uint8Array(arrayBuffer);
+    const uint8Array = new Uint8Array(arrayBuffer); // 此时 arrayBuffer 应该不再是分离状态
     
-    // 首先尝试寻找文本流
+    // 查找文本流
     const pdfString = new TextDecoder('latin1').decode(uint8Array);
     
+    // ... (后续代码不变) ...
     // 查找文本对象
     const textObjects = [];
     
@@ -299,6 +305,9 @@ export class PDFExtractor implements FileExtractor {
       }
       if (message.includes('encoding') || message.includes('decode')) {
         return ExtractionErrorCode.ENCODING_ERROR;
+      }
+      if (message.includes('detached arraybuffer')) { // Added specific error code for clarity
+        return ExtractionErrorCode.PROCESSING_ERROR; // Or a more specific code like BUFFER_DETACHED
       }
     }
     
