@@ -27,6 +27,8 @@ interface Job {
   company_name: string
   location: string
   salary_range: string
+  description?: string
+  job_types?: string[]
   created_at: string
 }
 
@@ -35,7 +37,14 @@ export default function EmployerDashboard() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const jobsPerPage = 6 // 每页显示6个职位
   const router = useRouter()
+
+  // 计算分页
+  const totalPages = Math.ceil(jobs.length / jobsPerPage)
+  const startIndex = (currentPage - 1) * jobsPerPage
+  const currentJobs = jobs.slice(startIndex, startIndex + jobsPerPage)
 
   useEffect(() => {
     checkUser()
@@ -109,6 +118,35 @@ export default function EmployerDashboard() {
     }
   }
 
+  // 计算发布时间
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date()
+    const postDate = new Date(dateString)
+    const diffInHours = Math.floor((now.getTime() - postDate.getTime()) / (1000 * 60 * 60))
+    
+    if (diffInHours < 1) {
+      return 'Just now'
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hours ago`
+    } else if (diffInHours < 48) {
+      return '1 day ago'
+    } else if (diffInHours < 168) {
+      return `${Math.floor(diffInHours / 24)} days ago`
+    } else {
+      const weeks = Math.floor(diffInHours / 168)
+      return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`
+    }
+  }
+
+  // 生成公司Logo占位符
+  const CompanyLogo = ({ companyName }: { companyName: string }) => (
+    <div className="w-16 h-16 bg-black flex items-center justify-center rounded flex-shrink-0">
+      <span className="text-white font-bold text-lg" style={{ color: '#c8ffd2' }}>
+        {companyName.charAt(0).toUpperCase()}
+      </span>
+    </div>
+  )
+
   if (loading) {
     return (
       <div className={`min-h-screen bg-white flex items-center justify-center ${ptSans.className}`}>
@@ -165,8 +203,199 @@ export default function EmployerDashboard() {
             </div>
           </div>
 
+          {/* 已发布职位 - LinkedIn 风格 */}
+          <div className="bg-white shadow-lg rounded-lg p-6 border-2" style={{borderColor: '#c8ffd2'}}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-bold text-black">
+                Recently posted jobs
+                <button 
+                  onClick={() => refreshJobs()}
+                  className="ml-2 text-sm hover:opacity-70 transition-opacity"
+                  title="Refresh list"
+                  style={{color: '#c8ffd2'}}
+                >
+                  🔄
+                </button>
+              </h2>
+              <Link 
+                href="/dashboard/post-job"
+                className="bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 text-sm font-bold transition-colors"
+                style={{color: '#c8ffd2'}}
+              >
+                Post Job
+              </Link>
+            </div>
+
+            {jobs.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-gray-400 text-4xl mb-4">📝</div>
+                <p className="text-gray-600 mb-4 font-medium">
+                  You haven't posted any jobs yet. Post your first job now!
+                </p>
+                <Link 
+                  href="/dashboard/post-job"
+                  className="inline-block bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 font-bold transition-colors"
+                  style={{color: '#c8ffd2'}}
+                >
+                  Post Now
+                </Link>
+              </div>
+            ) : (
+              <>
+                {/* 职位卡片网格 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                  {currentJobs.map((job) => (
+                    <div 
+                      key={job.id} 
+                      className="bg-white border-2 rounded-lg p-6 hover:shadow-lg transition-all duration-200 relative group"
+                      style={{borderColor: '#e5e7eb'}}
+                    >
+                      {/* 收藏按钮 */}
+                      <div className="absolute top-4 right-4">
+                        <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-100 rounded">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 hover:text-green-500">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* 公司Logo和职位信息 */}
+                      <div className="flex items-start space-x-4">
+                        <CompanyLogo companyName={job.company_name} />
+                        
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-lg text-black mb-1 pr-8 leading-tight">
+                            {job.title}
+                          </h3>
+                          <p className="text-gray-700 font-medium text-sm mb-1">
+                            {job.company_name}
+                          </p>
+                          <p className="text-gray-500 text-sm mb-3">
+                            {job.location}
+                          </p>
+                          
+                          {/* 薪资信息 */}
+                          {job.salary_range && (
+                            <div className="mb-3">
+                              <span className="text-sm font-medium text-gray-600">
+                                {job.salary_range}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* 工作类型标签 */}
+                          {job.job_types && job.job_types.length > 0 && (
+                            <div className="mb-4">
+                              <div className="flex flex-wrap gap-1">
+                                {job.job_types.slice(0, 2).map((type, index) => (
+                                  <span 
+                                    key={index}
+                                    className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700"
+                                  >
+                                    {type}
+                                  </span>
+                                ))}
+                                {job.job_types.length > 2 && (
+                                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
+                                    +{job.job_types.length - 2} more
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 申请者统计（模拟数据） */}
+                          <div className="mb-4">
+                            <div className="flex items-center text-gray-500 text-sm">
+                              <div className="w-4 h-4 bg-gray-300 rounded-full mr-2"></div>
+                              <span className="font-medium">{Math.floor(Math.random() * 50) + 10} candidates applied</span>
+                            </div>
+                          </div>
+
+                          {/* 发布时间 */}
+                          <div className="text-sm font-medium" style={{ color: '#22c55e' }}>
+                            {getTimeAgo(job.created_at)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 操作按钮 */}
+                      <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
+                        <div className="flex space-x-2">
+                          <button className="text-black hover:opacity-70 text-sm font-bold transition-opacity px-3 py-1 rounded-full border border-black">
+                            Edit
+                          </button>
+                          <button className="text-white hover:bg-red-700 text-sm font-bold transition-colors px-3 py-1 rounded-full bg-red-600">
+                            Delete
+                          </button>
+                        </div>
+                        <button className="text-gray-500 hover:text-black text-sm font-medium">
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 分页导航 */}
+                {totalPages > 1 && (
+                  <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                        currentPage === 1 
+                          ? 'text-gray-400 cursor-not-allowed' 
+                          : 'text-gray-700 hover:text-black hover:bg-gray-50'
+                      }`}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="15,18 9,12 15,6"/>
+                      </svg>
+                      <span>Previous</span>
+                    </button>
+
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-600 font-medium">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        ({jobs.length} jobs total)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-4">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                          currentPage === totalPages 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-gray-700 hover:text-black hover:bg-gray-50'
+                        }`}
+                      >
+                        <span>Next</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="9,18 15,12 9,6"/>
+                        </svg>
+                      </button>
+
+                      <Link
+                        href="/browse-jobs"
+                        className="text-sm font-bold text-black hover:opacity-70 transition-opacity"
+                        style={{ color: '#22c55e' }}
+                      >
+                        Show all jobs
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
           {/* 快速操作 */}
-          <div className="bg-white shadow-lg rounded-lg p-6 mb-6 border-2" style={{borderColor: '#c8ffd2'}}>
+          <div className="bg-white shadow-lg rounded-lg p-6 border-2" style={{borderColor: '#c8ffd2'}}>
             <h2 className="text-lg font-bold text-black mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link 
@@ -186,69 +415,6 @@ export default function EmployerDashboard() {
                 <div className="font-bold">Hiring Statistics</div>
               </button>
             </div>
-          </div>
-
-          {/* 已发布职位 */}
-          <div className="bg-white shadow-lg rounded-lg p-6 border-2" style={{borderColor: '#c8ffd2'}}>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-black">
-                Published Jobs ({jobs.length})
-                <button 
-                  onClick={() => refreshJobs()}
-                  className="ml-2 text-sm hover:opacity-70 transition-opacity"
-                  title="Refresh list"
-                  style={{color: '#c8ffd2'}}
-                >
-                  🔄
-                </button>
-              </h2>
-              <Link 
-                href="/dashboard/post-job"
-                className="bg-black text-white px-4 py-2 rounded-full hover:bg-gray-800 text-sm font-bold transition-colors"
-                style={{color: '#c8ffd2'}}
-              >
-                Post Job
-              </Link>
-            </div>
-            {jobs.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="text-gray-400 text-4xl mb-4">📝</div>
-                <p className="text-gray-600 mb-4 font-medium">
-                  You haven't posted any jobs yet. Post your first job now!
-                </p>
-                <Link 
-                  href="/dashboard/post-job"
-                  className="inline-block bg-black text-white px-6 py-2 rounded-full hover:bg-gray-800 font-bold transition-colors"
-                  style={{color: '#c8ffd2'}}
-                >
-                  Post Now
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {jobs.map((job) => (
-                  <div key={job.id} className="border-2 rounded-lg p-4 hover:shadow-md transition-all hover:opacity-90" style={{borderColor: '#c8ffd2', backgroundColor: '#fafafa'}}>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold text-black">{job.title}</h3>
-                        <p className="text-gray-700 text-sm font-medium">{job.location} • {job.salary_range}</p>
-                        <p className="text-gray-500 text-xs mt-1 font-medium">
-                          Posted on {new Date(job.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button className="text-black hover:opacity-70 text-sm font-bold transition-opacity px-2 py-1 rounded" style={{backgroundColor: '#c8ffd2'}}>
-                          Edit
-                        </button>
-                        <button className="text-white hover:bg-red-700 text-sm font-bold transition-colors px-2 py-1 rounded bg-red-600">
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
