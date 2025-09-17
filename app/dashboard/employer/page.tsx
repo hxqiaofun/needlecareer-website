@@ -212,7 +212,16 @@ export default function EmployerDashboard() {
 
           {/* 用户信息卡片 */}
           <div className="bg-white shadow-lg rounded-lg p-6 mb-6 border-2" style={{borderColor: '#c8ffd2'}}>
-            <h2 className="text-lg font-bold text-black mb-4">Profile Information</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-black">Profile Information</h2>
+              <Link
+                href="/dashboard/employer/profile"
+                className="text-sm font-bold hover:opacity-70 transition-opacity px-3 py-1 rounded-full border border-black"
+                style={{ color: '#22c55e' }}
+              >
+                Edit Profile
+              </Link>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-bold text-black">Name</label>
@@ -284,7 +293,10 @@ export default function EmployerDashboard() {
                     >
                       {/* 收藏按钮 */}
                       <div className="absolute top-4 right-4">
-                        <button className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-100 rounded">
+                        <button 
+                          type="button"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-100 rounded"
+                        >
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 hover:text-green-500">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                           </svg>
@@ -354,14 +366,23 @@ export default function EmployerDashboard() {
                       {/* 操作按钮 */}
                       <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
                         <div className="flex space-x-2">
-                          <button className="text-black hover:opacity-70 text-sm font-bold transition-opacity px-3 py-1 rounded-full border border-black">
+                          <button 
+                            type="button"
+                            className="text-black hover:opacity-70 text-sm font-bold transition-opacity px-3 py-1 rounded-full border border-black"
+                          >
                             Edit
                           </button>
-                          <button className="text-white hover:bg-red-700 text-sm font-bold transition-colors px-3 py-1 rounded-full bg-red-600">
+                          <button 
+                            type="button"
+                            className="text-white hover:bg-red-700 text-sm font-bold transition-colors px-3 py-1 rounded-full bg-red-600"
+                          >
                             Delete
                           </button>
                         </div>
-                        <button className="text-gray-500 hover:text-black text-sm font-medium">
+                        <button 
+                          type="button"
+                          className="text-gray-500 hover:text-black text-sm font-medium"
+                        >
                           View Details
                         </button>
                       </div>
@@ -438,11 +459,19 @@ export default function EmployerDashboard() {
                 <div className="text-2xl mb-2">📝</div>
                 <div className="text-black font-bold">Post New Job</div>
               </Link>
-              <button className="bg-black text-white p-4 rounded-lg hover:bg-gray-800 text-center transition-colors border-2 border-black" style={{color: '#c8ffd2'}}>
+              <button 
+                type="button"
+                className="bg-black text-white p-4 rounded-lg hover:bg-gray-800 text-center transition-colors border-2 border-black" 
+                style={{color: '#c8ffd2'}}
+              >
                 <div className="text-2xl mb-2">👥</div>
                 <div className="font-bold">View Applicants</div>
               </button>
-              <button className="bg-gray-600 text-white p-4 rounded-lg hover:bg-gray-700 text-center transition-colors border-2 border-gray-600" style={{color: '#c8ffd2'}}>
+              <button 
+                type="button"
+                className="bg-gray-600 text-white p-4 rounded-lg hover:bg-gray-700 text-center transition-colors border-2 border-gray-600" 
+                style={{color: '#c8ffd2'}}
+              >
                 <div className="text-2xl mb-2">📊</div>
                 <div className="font-bold">Hiring Statistics</div>
               </button>
