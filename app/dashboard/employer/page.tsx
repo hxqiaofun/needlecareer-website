@@ -38,7 +38,7 @@ export default function EmployerDashboard() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
-  const jobsPerPage = 6 // 每页显示6个职位
+  const jobsPerPage = 3 // 每页显示3个职位
   const router = useRouter()
 
   // 计算分页
@@ -170,12 +170,44 @@ export default function EmployerDashboard() {
 
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* 页面标题 */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-black">Employer Dashboard</h1>
-            <p className="mt-2 text-gray-600 font-medium">
-              Manage your job postings and candidates
-            </p>
+          {/* 公司标题区域 - LinkedIn 风格 */}
+          <div className="mb-8">
+            <div className="flex items-start space-x-6">
+              {/* 公司Logo占位 */}
+              <div className="w-24 h-24 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-3xl" style={{ color: '#c8ffd2' }}>
+                  {profile.company_name ? profile.company_name.charAt(0).toUpperCase() : 'C'}
+                </span>
+              </div>
+              
+              <div className="flex-1">
+                {/* 公司名称 - Dashboard */}
+                <div className="flex items-center mb-2">
+                  <h1 className="text-3xl font-bold text-black">
+                    {profile.company_name || 'Your Company'} - Dashboard
+                  </h1>
+                  <div className="ml-3 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">✓</span>
+                  </div>
+                </div>
+                
+                {/* 公司简介占位 */}
+                <p className="text-gray-700 font-medium mb-4 text-lg">
+                  Global asset manager. Technology provider. Helping more and more people experience financial well-being.
+                </p>
+                
+                {/* 公司信息 */}
+                <div className="text-sm text-gray-600 font-medium">
+                  <span className="mr-1">Financial Services</span>
+                  <span className="mx-2">|</span>
+                  <span className="mr-1">New York, NY</span>
+                  <span className="mx-2">|</span>
+                  <span className="mr-1">2M Followers</span>
+                  <span className="mx-2">|</span>
+                  <span>10k+ Employees</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* 用户信息卡片 */}
@@ -242,8 +274,8 @@ export default function EmployerDashboard() {
               </div>
             ) : (
               <>
-                {/* 职位卡片网格 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {/* 职位卡片网格 - 只显示一行 */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   {currentJobs.map((job) => (
                     <div 
                       key={job.id} 
