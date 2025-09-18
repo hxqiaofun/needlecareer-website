@@ -137,8 +137,9 @@ export default function EmployerProfile() {
     if (!file || !profile) return
 
     // 验证文件类型和大小
-    if (!file.type.startsWith('image/')) {
-      setMessage({ type: 'error', text: 'Please upload an image file' })
+    const allowedTypes = ['image/png', 'image/jpg', 'image/jpeg', 'image/gif', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      setMessage({ type: 'error', text: 'Please upload a PNG, JPG, JPEG, GIF, or WebP image file' })
       return
     }
 
@@ -148,17 +149,21 @@ export default function EmployerProfile() {
     }
 
     setUploading(true)
+    setMessage({ type: '', text: '' })
     
     try {
       // 生成唯一文件名
-      const fileExt = file.name.split('.').pop()
+      const fileExt = file.name.split('.').pop()?.toLowerCase()
       const fileName = `${profile.id}-${Date.now()}.${fileExt}`
       const filePath = `company-logos/${fileName}`
 
       // 上传到 Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('resume-files')
-        .upload(filePath, file)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
 
       if (uploadError) throw uploadError
 
@@ -170,16 +175,22 @@ export default function EmployerProfile() {
       // 更新数据库
       const { error: updateError } = await supabase
         .from('user_profiles')
-        .update({ company_logo_url: publicUrl })
+        .update({ 
+          company_logo_url: publicUrl,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', profile.id)
 
       if (updateError) throw updateError
 
       setProfile(prev => prev ? { ...prev, company_logo_url: publicUrl } : null)
       setMessage({ type: 'success', text: 'Logo uploaded successfully!' })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Logo upload error:', error)
-      setMessage({ type: 'error', text: 'Failed to upload logo' })
+      setMessage({ 
+        type: 'error', 
+        text: error.message || 'Failed to upload logo. Please try again.' 
+      })
     } finally {
       setUploading(false)
     }

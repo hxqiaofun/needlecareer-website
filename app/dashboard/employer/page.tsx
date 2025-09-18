@@ -19,6 +19,16 @@ interface UserProfile {
   user_type: 'employer'
   company_name?: string
   phone?: string
+  company_logo_url?: string
+  company_description?: string
+  company_website?: string
+  industry?: string
+  company_size?: string
+  company_location?: string
+  contact_info?: {
+    phone?: string
+    email?: string
+  }
 }
 
 interface Job {
@@ -173,11 +183,19 @@ export default function EmployerDashboard() {
           {/* 公司标题区域 - LinkedIn 风格 */}
           <div className="mb-8">
             <div className="flex items-start space-x-6">
-              {/* 公司Logo占位 */}
-              <div className="w-24 h-24 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-3xl" style={{ color: '#c8ffd2' }}>
-                  {profile.company_name ? profile.company_name.charAt(0).toUpperCase() : 'C'}
-                </span>
+              {/* 公司Logo - 真实数据 */}
+              <div className="w-24 h-24 bg-black rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {profile.company_logo_url ? (
+                  <img 
+                    src={profile.company_logo_url} 
+                    alt={`${profile.company_name} Logo`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-white font-bold text-3xl" style={{ color: '#c8ffd2' }}>
+                    {profile.company_name ? profile.company_name.charAt(0).toUpperCase() : 'C'}
+                  </span>
+                )}
               </div>
               
               <div className="flex-1">
@@ -191,20 +209,46 @@ export default function EmployerDashboard() {
                   </div>
                 </div>
                 
-                {/* 公司简介占位 */}
+                {/* 公司简介 - 真实数据 */}
                 <p className="text-gray-700 font-medium mb-4 text-lg">
-                  Global asset manager. Technology provider. Helping more and more people experience financial well-being.
+                  {profile.company_description || 
+                    'Complete your company profile to showcase your organization to potential candidates.'
+                  }
                 </p>
                 
-                {/* 公司信息 */}
+                {/* 公司信息 - 真实数据 */}
                 <div className="text-sm text-gray-600 font-medium">
-                  <span className="mr-1">Financial Services</span>
+                  <span className="mr-1">
+                    {profile.industry || 'Industry not specified'}
+                  </span>
+                  {profile.company_location && (
+                    <>
+                      <span className="mx-2">|</span>
+                      <span className="mr-1">{profile.company_location}</span>
+                    </>
+                  )}
+                  {profile.company_size && (
+                    <>
+                      <span className="mx-2">|</span>
+                      <span className="mr-1">{profile.company_size}</span>
+                    </>
+                  )}
                   <span className="mx-2">|</span>
-                  <span className="mr-1">New York, NY</span>
-                  <span className="mx-2">|</span>
-                  <span className="mr-1">2M Followers</span>
-                  <span className="mx-2">|</span>
-                  <span>10k+ Employees</span>
+                  <span>{jobs.length} Active Job{jobs.length !== 1 ? 's' : ''}</span>
+                  {profile.company_website && (
+                    <>
+                      <span className="mx-2">|</span>
+                      <a 
+                        href={profile.company_website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:opacity-70 transition-opacity"
+                        style={{ color: '#22c55e' }}
+                      >
+                        Visit Website
+                      </a>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
