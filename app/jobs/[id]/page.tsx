@@ -184,6 +184,41 @@ export default function JobDetailsView() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!profile || !job || profile.id !== job.employer_id) {
+      alert('You do not have permission to delete this job')
+      return
+    }
+
+    // 确认删除
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this job posting?\n\n"${job.title}" at ${job.company_name}\n\nThis action cannot be undone.`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', jobId)
+        .eq('employer_id', profile.id) // 确保只能删除自己的职位
+
+      if (error) {
+        throw error
+      }
+
+      alert('Job deleted successfully!')
+      router.push('/dashboard/employer?success=job_deleted')
+
+    } catch (error: any) {
+      console.error('Delete error:', error)
+      alert('Failed to delete job: ' + (error?.message || 'Unknown error'))
+    }
+  }
+
   // 智能返回链接逻辑
   const getBackLink = () => {
     if (!profile) {
@@ -405,7 +440,10 @@ export default function JobDetailsView() {
                     >
                       Edit
                     </Link>
-                    <button className="flex-1 border border-gray-300 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-50 font-medium transition-colors">
+                    <button 
+                      onClick={handleDelete}
+                      className="flex-1 border border-red-500 text-red-600 px-4 py-2 rounded-full hover:bg-red-50 font-medium transition-colors"
+                    >
                       Delete
                     </button>
                   </div>
