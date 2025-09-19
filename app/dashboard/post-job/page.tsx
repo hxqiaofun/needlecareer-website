@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -39,7 +39,6 @@ interface JobFormErrors {
   requirements?: string
 }
 
-// Job Type Options
 const JOB_TYPE_OPTIONS = [
   { value: 'full-time', label: 'Full Time' },
   { value: 'part-time', label: 'Part Time' },
@@ -54,7 +53,7 @@ const JOB_TYPE_OPTIONS = [
   { value: 'otp-sponsorship', label: 'OTP Sponsorship' }
 ]
 
-export default function PostJob() {
+function PostJobContent() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -70,9 +69,8 @@ export default function PostJob() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
-  // 检测编辑模式
   const editJobId = searchParams.get('edit')
-  const isEditMode = !!editJobId
+  const isEditMode = Boolean(editJobId)
 
   useEffect(() => {
     checkUserPermission()
@@ -124,7 +122,7 @@ export default function PostJob() {
         .from('jobs')
         .select('*')
         .eq('id', jobId)
-        .eq('employer_id', profile?.id) // 确保只能编辑自己的职位
+        .eq('employer_id', profile?.id)
         .single()
 
       if (error) {
@@ -137,7 +135,6 @@ export default function PostJob() {
         return
       }
 
-      // 填充表单数据
       setFormData({
         title: jobData.title || '',
         job_types: jobData.job_types || [],
@@ -147,14 +144,15 @@ export default function PostJob() {
         requirements: jobData.requirements || ''
       })
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Load job error:', error)
-      alert('Failed to load job data: ' + (error?.message || 'Unknown error'))
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      alert('Failed to load job data: ' + errorMessage)
       router.push('/dashboard/employer')
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -234,7 +232,6 @@ export default function PostJob() {
       }
 
       if (isEditMode && editJobId) {
-        // 更新现有职位
         const { error } = await supabase
           .from('jobs')
           .update({
@@ -242,16 +239,14 @@ export default function PostJob() {
             updated_at: new Date().toISOString()
           })
           .eq('id', editJobId)
-          .eq('employer_id', user.id) // 确保只能更新自己的职位
+          .eq('employer_id', user.id)
 
         if (error) {
           throw error
         }
 
-        // 编辑成功，跳转到职位详情页
         router.push(`/jobs/${editJobId}?success=job_updated`)
       } else {
-        // 创建新职位
         const { error } = await supabase
           .from('jobs')
           .insert(jobData)
@@ -260,13 +255,12 @@ export default function PostJob() {
           throw error
         }
 
-        // 发布成功，跳转回仪表板
         router.push('/dashboard/employer?success=job_posted')
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Job operation error:', error)
-      const errorMessage = error?.message || error?.toString() || 'Unknown error'
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       alert(`${isEditMode ? 'Update' : 'Posting'} failed: ` + errorMessage)
     } finally {
       setSubmitting(false)
@@ -295,7 +289,6 @@ export default function PostJob() {
 
       <div className="max-w-3xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Page Title */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-black">
               {isEditMode ? 'Edit Job' : 'Post New Job'}
@@ -308,18 +301,15 @@ export default function PostJob() {
             </p>
           </div>
 
-          {/* Post/Edit Job Form */}
-          <div className="bg-white shadow-lg rounded-lg border-2" style={{borderColor: '#c8ffd2'}}>
+          <div className="bg-white shadow-lg rounded-lg border-2 border-green-200">
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {/* Basic Information */}
               <div>
                 <h2 className="text-lg font-bold text-black mb-4">Basic Information</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Job Title */}
                   <div className="md:col-span-2">
                     <label htmlFor="title" className="block text-sm font-bold text-black">
-                      Job Title <span style={{color: '#c8ffd2'}}>*</span>
+                      Job Title <span className="text-green-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -334,13 +324,12 @@ export default function PostJob() {
                       }`}
                       placeholder="e.g., Frontend Developer"
                     />
-                    {errors.title && <p className="mt-1 text-sm font-medium" style={{color: 'red'}}>{errors.title}</p>}
+                    {errors.title && <p className="mt-1 text-sm font-medium text-red-700">{errors.title}</p>}
                   </div>
 
-                  {/* Job Types - Multi-select Tags */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-bold text-black mb-3">
-                      Job Types <span style={{color: '#c8ffd2'}}>*</span>
+                      Job Types <span className="text-green-500">*</span>
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {JOB_TYPE_OPTIONS.map(option => {
@@ -352,10 +341,9 @@ export default function PostJob() {
                             onClick={() => handleJobTypeToggle(option.value)}
                             className={`px-3 py-1.5 rounded-full text-sm font-bold border-2 transition-all ${
                               isSelected
-                                ? 'text-black border-black'
+                                ? 'text-black border-black bg-green-200'
                                 : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
                             }`}
-                            style={isSelected ? {backgroundColor: '#c8ffd2'} : {}}
                           >
                             {option.label}
                             {isSelected && (
@@ -368,13 +356,12 @@ export default function PostJob() {
                     <p className="mt-1 text-xs text-gray-600 font-medium">
                       Click to select multiple job types. You can choose more than one.
                     </p>
-                    {errors.job_types && <p className="mt-2 text-sm font-medium" style={{color: 'red'}}>{errors.job_types}</p>}
+                    {errors.job_types && <p className="mt-2 text-sm font-medium text-red-700">{errors.job_types}</p>}
                   </div>
 
-                  {/* Location */}
                   <div>
                     <label htmlFor="location" className="block text-sm font-bold text-black">
-                      Location <span style={{color: '#c8ffd2'}}>*</span>
+                      Location <span className="text-green-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -389,10 +376,9 @@ export default function PostJob() {
                       }`}
                       placeholder="e.g., New York, NY"
                     />
-                    {errors.location && <p className="mt-1 text-sm font-medium" style={{color: 'red'}}>{errors.location}</p>}
+                    {errors.location && <p className="mt-1 text-sm font-medium text-red-700">{errors.location}</p>}
                   </div>
 
-                  {/* Salary Range */}
                   <div>
                     <label htmlFor="salary_range" className="block text-sm font-bold text-black">
                       Salary Range
@@ -408,7 +394,6 @@ export default function PostJob() {
                     />
                   </div>
 
-                  {/* Company Name (Read-only) */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-bold text-black">
                       Company Name
@@ -417,8 +402,7 @@ export default function PostJob() {
                       type="text"
                       value={profile.company_name || profile.full_name}
                       disabled
-                      className="mt-1 block w-full px-3 py-2 border-2 border-gray-300 rounded-md shadow-sm text-gray-600 font-medium"
-                      style={{backgroundColor: '#fafafa'}}
+                      className="mt-1 block w-full px-3 py-2 border-2 border-gray-300 rounded-md shadow-sm text-gray-600 font-medium bg-gray-50"
                     />
                     <p className="mt-1 text-xs text-gray-600 font-medium">
                       Company name is from your account information. Please go to profile settings to modify
@@ -427,15 +411,13 @@ export default function PostJob() {
                 </div>
               </div>
 
-              {/* Detailed Information */}
               <div>
                 <h2 className="text-lg font-bold text-black mb-4">Detailed Information</h2>
                 
                 <div className="space-y-6">
-                  {/* Job Description */}
                   <div>
                     <label htmlFor="description" className="block text-sm font-bold text-black">
-                      Job Description <span style={{color: '#c8ffd2'}}>*</span>
+                      Job Description <span className="text-green-500">*</span>
                     </label>
                     <textarea
                       id="description"
@@ -450,10 +432,9 @@ export default function PostJob() {
                       }`}
                       placeholder="Please describe the job responsibilities, duties, and work content in detail..."
                     />
-                    {errors.description && <p className="mt-1 text-sm font-medium" style={{color: 'red'}}>{errors.description}</p>}
+                    {errors.description && <p className="mt-1 text-sm font-medium text-red-700">{errors.description}</p>}
                   </div>
 
-                  {/* Job Requirements */}
                   <div>
                     <label htmlFor="requirements" className="block text-sm font-bold text-black">
                       Job Requirements
@@ -471,8 +452,7 @@ export default function PostJob() {
                 </div>
               </div>
 
-              {/* Submit Buttons */}
-              <div className="flex justify-end space-x-4 pt-6 border-t-2" style={{borderColor: '#c8ffd2'}}>
+              <div className="flex justify-end space-x-4 pt-6 border-t-2 border-green-200">
                 <Link
                   href={isEditMode ? `/jobs/${editJobId}` : "/dashboard/employer"}
                   className="px-6 py-2 border-2 border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-bold transition-colors"
@@ -482,8 +462,7 @@ export default function PostJob() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800 disabled:bg-gray-300 font-bold transition-colors"
-                  style={{color: submitting ? '#000' : '#c8ffd2'}}
+                  className="px-6 py-2 bg-black text-green-300 rounded-md hover:bg-gray-800 disabled:bg-gray-300 disabled:text-black font-bold transition-colors"
                 >
                   {submitting 
                     ? (isEditMode ? 'Updating...' : 'Posting...') 
@@ -496,5 +475,17 @@ export default function PostJob() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PostJob() {
+  return (
+    <Suspense fallback={
+      <div className={`min-h-screen bg-white flex items-center justify-center ${ptSans.className}`}>
+        <div className="text-xl text-gray-600 font-medium">Loading...</div>
+      </div>
+    }>
+      <PostJobContent />
+    </Suspense>
   )
 }
