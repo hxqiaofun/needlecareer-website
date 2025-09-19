@@ -21,8 +21,8 @@ interface EmployerProfile {
   company_logo_url?: string
   company_description?: string
   company_website?: string
-  industry?: string
-  company_size?: string
+  industry?: string[]  // 改为数组
+  company_size?: string[]  // 改为数组
   company_location?: string
   contact_info?: any
 }
@@ -70,8 +70,8 @@ export default function EmployerProfile() {
     phone: '',
     company_description: '',
     company_website: '',
-    industry: '',
-    company_size: '',
+    industry: [] as string[],  // 改为数组
+    company_size: [] as string[],  // 改为数组
     company_location: '',
     contact_phone: '',
     contact_email: ''
@@ -111,8 +111,8 @@ export default function EmployerProfile() {
         phone: profileData.phone || '',
         company_description: profileData.company_description || '',
         company_website: profileData.company_website || '',
-        industry: profileData.industry || '',
-        company_size: profileData.company_size || '',
+        industry: Array.isArray(profileData.industry) ? profileData.industry : (profileData.industry ? [profileData.industry] : []),
+        company_size: Array.isArray(profileData.company_size) ? profileData.company_size : (profileData.company_size ? [profileData.company_size] : []),
         company_location: profileData.company_location || '',
         contact_phone: profileData.contact_info?.phone || '',
         contact_email: profileData.contact_info?.email || profileData.email || ''
@@ -130,6 +130,28 @@ export default function EmployerProfile() {
       ...prev,
       [field]: value
     }))
+  }
+
+  // 处理标签选择
+  const handleTagToggle = (field: 'industry' | 'company_size', value: string) => {
+    setFormData(prev => {
+      const currentArray = prev[field]
+      const isSelected = currentArray.includes(value)
+      
+      if (isSelected) {
+        // 如果已选中，则移除
+        return {
+          ...prev,
+          [field]: currentArray.filter(item => item !== value)
+        }
+      } else {
+        // 如果未选中，则添加
+        return {
+          ...prev,
+          [field]: [...currentArray, value]
+        }
+      }
+    })
   }
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,8 +233,8 @@ export default function EmployerProfile() {
         phone: formData.phone,
         company_description: formData.company_description,
         company_website: formData.company_website,
-        industry: formData.industry,
-        company_size: formData.company_size,
+        industry: formData.industry,  // 保存为数组
+        company_size: formData.company_size,  // 保存为数组
         company_location: formData.company_location,
         contact_info: {
           phone: formData.contact_phone,
@@ -241,6 +263,53 @@ export default function EmployerProfile() {
       setSaving(false)
     }
   }
+
+  // 标签选择组件
+  const TagSelector = ({ 
+    label, 
+    options, 
+    selectedValues, 
+    onToggle, 
+    field 
+  }: { 
+    label: string
+    options: string[]
+    selectedValues: string[]
+    onToggle: (field: 'industry' | 'company_size', value: string) => void
+    field: 'industry' | 'company_size'
+  }) => (
+    <div>
+      <label className="block text-sm font-bold text-black mb-2">
+        {label}
+      </label>
+      <p className="text-xs text-gray-600 mb-3">
+        Click to select multiple {label.toLowerCase()}. You can choose more than one.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => {
+          const isSelected = selectedValues.includes(option)
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onToggle(field, option)}
+              className={`px-4 py-2 rounded-full text-sm font-medium border-2 transition-all relative ${
+                isSelected
+                  ? 'text-black border-black'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+              }`}
+              style={isSelected ? { backgroundColor: '#c8ffd2' } : {}}
+            >
+              {option}
+              {isSelected && (
+                <span className="ml-2 text-green-600 font-bold">✓</span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 
   if (loading) {
     return (
@@ -389,79 +458,57 @@ export default function EmployerProfile() {
                 <div className="border-b border-gray-200 pb-6">
                   <h2 className="text-lg font-bold text-black mb-4">Company Details</h2>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-6">
                     {/* 公司网站 */}
-                    <div>
-                      <label className="block text-sm font-bold text-black mb-2">
-                        Company Website
-                      </label>
-                      <input
-                        type="url"
-                        value={formData.company_website}
-                        onChange={(e) => handleInputChange('company_website', e.target.value)}
-                        className="w-full px-4 py-2 rounded-full border-0 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                        style={{ backgroundColor: '#c8ffd2' }}
-                        placeholder="https://www.example.com"
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-bold text-black mb-2">
+                          Company Website
+                        </label>
+                        <input
+                          type="url"
+                          value={formData.company_website}
+                          onChange={(e) => handleInputChange('company_website', e.target.value)}
+                          className="w-full px-4 py-2 rounded-full border-0 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                          style={{ backgroundColor: '#c8ffd2' }}
+                          placeholder="https://www.example.com"
+                        />
+                      </div>
+
+                      {/* 公司地点 */}
+                      <div>
+                        <label className="block text-sm font-bold text-black mb-2">
+                          Location *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.company_location}
+                          onChange={(e) => handleInputChange('company_location', e.target.value)}
+                          className="w-full px-4 py-2 rounded-full border-0 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                          style={{ backgroundColor: '#c8ffd2' }}
+                          placeholder="City, State/Country"
+                        />
+                      </div>
                     </div>
 
-                    {/* 行业领域 */}
-                    <div>
-                      <label className="block text-sm font-bold text-black mb-2">
-                        Industry *
-                      </label>
-                      <select
-                        required
-                        value={formData.industry}
-                        onChange={(e) => handleInputChange('industry', e.target.value)}
-                        className="w-full px-4 py-2 rounded-full border-0 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                        style={{ backgroundColor: '#c8ffd2' }}
-                      >
-                        <option value="">Select Industry</option>
-                        {INDUSTRY_OPTIONS.map((industry) => (
-                          <option key={industry} value={industry}>
-                            {industry}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    {/* 行业领域标签选择 */}
+                    <TagSelector
+                      label="Industry *"
+                      options={INDUSTRY_OPTIONS}
+                      selectedValues={formData.industry}
+                      onToggle={handleTagToggle}
+                      field="industry"
+                    />
 
-                    {/* 公司规模 */}
-                    <div>
-                      <label className="block text-sm font-bold text-black mb-2">
-                        Company Size *
-                      </label>
-                      <select
-                        required
-                        value={formData.company_size}
-                        onChange={(e) => handleInputChange('company_size', e.target.value)}
-                        className="w-full px-4 py-2 rounded-full border-0 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                        style={{ backgroundColor: '#c8ffd2' }}
-                      >
-                        <option value="">Select Company Size</option>
-                        {COMPANY_SIZE_OPTIONS.map((size) => (
-                          <option key={size} value={size}>
-                            {size}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* 公司地点 */}
-                    <div>
-                      <label className="block text-sm font-bold text-black mb-2">
-                        Location *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.company_location}
-                        onChange={(e) => handleInputChange('company_location', e.target.value)}
-                        className="w-full px-4 py-2 rounded-full border-0 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-                        style={{ backgroundColor: '#c8ffd2' }}
-                        placeholder="City, State/Country"
-                      />
-                    </div>
+                    {/* 公司规模标签选择 */}
+                    <TagSelector
+                      label="Company Size *"
+                      options={COMPANY_SIZE_OPTIONS}
+                      selectedValues={formData.company_size}
+                      onToggle={handleTagToggle}
+                      field="company_size"
+                    />
                   </div>
                 </div>
 
