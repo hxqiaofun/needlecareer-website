@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { PT_Sans } from 'next/font/google'
 import Header from '@/app/components/Header'
@@ -16,21 +16,20 @@ interface UserProfile {
   id: string
   email: string
   full_name: string
-  user_type: 'student' | 'employer'  // 更新为正确的类型
+  user_type: 'student' | 'employer'
   company_name?: string
   phone?: string
 }
 
 interface JobFormData {
   title: string
-  job_types: string[]  // 改为数组
+  job_types: string[]
   location: string
   salary_range: string
   description: string
   requirements: string
 }
 
-// 错误类型定义
 interface JobFormErrors {
   title?: string
   job_types?: string
@@ -61,7 +60,7 @@ export default function PostJob() {
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState<JobFormData>({
     title: '',
-    job_types: [],  // 改为空数组
+    job_types: [],
     location: '',
     salary_range: '',
     description: '',
@@ -69,10 +68,21 @@ export default function PostJob() {
   })
   const [errors, setErrors] = useState<JobFormErrors>({})
   const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // 检测编辑模式
+  const editJobId = searchParams.get('edit')
+  const isEditMode = !!editJobId
 
   useEffect(() => {
     checkUserPermission()
   }, [])
+
+  useEffect(() => {
+    if (isEditMode && editJobId && profile) {
+      loadJobForEdit(editJobId)
+    }
+  }, [isEditMode, editJobId, profile])
 
   const checkUserPermission = async () => {
     try {
@@ -83,7 +93,6 @@ export default function PostJob() {
         return
       }
 
-      // 获取用户资料
       const { data: profileData } = await supabase
         .from('user_profiles')
         .select('*')
@@ -95,7 +104,6 @@ export default function PostJob() {
         return
       }
 
-      // 检查是否为企业用户
       if (profileData.user_type !== 'employer') {
         router.push('/dashboard')
         return
@@ -110,6 +118,42 @@ export default function PostJob() {
     }
   }
 
+  const loadJobForEdit = async (jobId: string) => {
+    try {
+      const { data: jobData, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', jobId)
+        .eq('employer_id', profile?.id) // 确保只能编辑自己的职位
+        .single()
+
+      if (error) {
+        throw error
+      }
+
+      if (!jobData) {
+        alert('Job not found or you do not have permission to edit this job.')
+        router.push('/dashboard/employer')
+        return
+      }
+
+      // 填充表单数据
+      setFormData({
+        title: jobData.title || '',
+        job_types: jobData.job_types || [],
+        location: jobData.location || '',
+        salary_range: jobData.salary_range || '',
+        description: jobData.description || '',
+        requirements: jobData.requirements || ''
+      })
+
+    } catch (error: any) {
+      console.error('Load job error:', error)
+      alert('Failed to load job data: ' + (error?.message || 'Unknown error'))
+      router.push('/dashboard/employer')
+    }
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
@@ -117,7 +161,6 @@ export default function PostJob() {
       [name]: value
     }))
     
-    // 清除该字段的错误
     if (errors[name as keyof JobFormData]) {
       setErrors(prev => ({
         ...prev,
@@ -126,16 +169,14 @@ export default function PostJob() {
     }
   }
 
-  // 处理Job Type标签选择
   const handleJobTypeToggle = (jobType: string) => {
     setFormData(prev => ({
       ...prev,
       job_types: prev.job_types.includes(jobType)
-        ? prev.job_types.filter(type => type !== jobType)  // 移除标签
-        : [...prev.job_types, jobType]  // 添加标签
+        ? prev.job_types.filter(type => type !== jobType)
+        : [...prev.job_types, jobType]
     }))
     
-    // 清除job_types的错误
     if (errors.job_types) {
       setErrors(prev => ({
         ...prev,
@@ -183,7 +224,7 @@ export default function PostJob() {
 
       const jobData = {
         title: formData.title.trim(),
-        job_types: formData.job_types,  // 直接传递数组
+        job_types: formData.job_types,
         company_name: profile.company_name || profile.full_name,
         location: formData.location.trim(),
         salary_range: formData.salary_range.trim() || null,
@@ -192,21 +233,41 @@ export default function PostJob() {
         employer_id: user.id
       }
 
-      const { error } = await supabase
-        .from('jobs')
-        .insert(jobData)
+      if (isEditMode && editJobId) {
+        // 更新现有职位
+        const { error } = await supabase
+          .from('jobs')
+          .update({
+            ...jobData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editJobId)
+          .eq('employer_id', user.id) // 确保只能更新自己的职位
 
-      if (error) {
-        throw error
+        if (error) {
+          throw error
+        }
+
+        // 编辑成功，跳转到职位详情页
+        router.push(`/jobs/${editJobId}?success=job_updated`)
+      } else {
+        // 创建新职位
+        const { error } = await supabase
+          .from('jobs')
+          .insert(jobData)
+
+        if (error) {
+          throw error
+        }
+
+        // 发布成功，跳转回仪表板
+        router.push('/dashboard/employer?success=job_posted')
       }
 
-      // 发布成功，跳转回仪表板
-      router.push('/dashboard/employer?success=job_posted')
-
     } catch (error: any) {
-      console.error('Job posting error:', error)
+      console.error('Job operation error:', error)
       const errorMessage = error?.message || error?.toString() || 'Unknown error'
-      alert('Posting failed: ' + errorMessage)
+      alert(`${isEditMode ? 'Update' : 'Posting'} failed: ` + errorMessage)
     } finally {
       setSubmitting(false)
     }
@@ -230,20 +291,24 @@ export default function PostJob() {
 
   return (
     <div className={`min-h-screen bg-white ${ptSans.className}`}>
-      {/* 使用 Header 组件 */}
       <Header />
 
       <div className="max-w-3xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           {/* Page Title */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-black">Post New Job</h1>
+            <h1 className="text-3xl font-bold text-black">
+              {isEditMode ? 'Edit Job' : 'Post New Job'}
+            </h1>
             <p className="mt-2 text-gray-600 font-medium">
-              Fill in the information below to post your job opportunity
+              {isEditMode 
+                ? 'Update your job posting information below'
+                : 'Fill in the information below to post your job opportunity'
+              }
             </p>
           </div>
 
-          {/* Post Job Form */}
+          {/* Post/Edit Job Form */}
           <div className="bg-white shadow-lg rounded-lg border-2" style={{borderColor: '#c8ffd2'}}>
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               {/* Basic Information */}
@@ -409,7 +474,7 @@ export default function PostJob() {
               {/* Submit Buttons */}
               <div className="flex justify-end space-x-4 pt-6 border-t-2" style={{borderColor: '#c8ffd2'}}>
                 <Link
-                  href="/dashboard/employer"
+                  href={isEditMode ? `/jobs/${editJobId}` : "/dashboard/employer"}
                   className="px-6 py-2 border-2 border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-bold transition-colors"
                 >
                   Cancel
@@ -420,7 +485,10 @@ export default function PostJob() {
                   className="px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800 disabled:bg-gray-300 font-bold transition-colors"
                   style={{color: submitting ? '#000' : '#c8ffd2'}}
                 >
-                  {submitting ? 'Posting...' : 'Post Job'}
+                  {submitting 
+                    ? (isEditMode ? 'Updating...' : 'Posting...') 
+                    : (isEditMode ? 'Update Job' : 'Post Job')
+                  }
                 </button>
               </div>
             </form>

@@ -423,12 +423,12 @@ export default function EmployerDashboard() {
                             Delete
                           </button>
                         </div>
-                        <button 
-                          type="button"
-                          className="text-gray-500 hover:text-black text-sm font-medium"
+                        <Link
+                          href={`/jobs/${job.id}`}
+                          className="text-gray-500 hover:text-black text-sm font-medium transition-colors"
                         >
                           View Details
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   ))}
@@ -492,7 +492,7 @@ export default function EmployerDashboard() {
           </div>
 
           {/* 快速操作 */}
-          <div className="bg-white shadow-lg rounded-lg p-6 border-2" style={{borderColor: '#c8ffd2'}}>
+          <div className="bg-white shadow-lg rounded-lg p-6 border-2 mt-6" style={{borderColor: '#c8ffd2'}}>
             <h2 className="text-lg font-bold text-black mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link 
