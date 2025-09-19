@@ -48,10 +48,9 @@ export default function EmployerDashboard() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
-  const jobsPerPage = 3 // 每页显示3个职位
+  const jobsPerPage = 3
   const router = useRouter()
 
-  // 计算分页
   const totalPages = Math.ceil(jobs.length / jobsPerPage)
   const startIndex = (currentPage - 1) * jobsPerPage
   const currentJobs = jobs.slice(startIndex, startIndex + jobsPerPage)
@@ -60,12 +59,10 @@ export default function EmployerDashboard() {
     checkUser()
   }, [])
 
-  // 监听发布成功后的刷新
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get('success') === 'job_posted') {
+    if (urlParams.get('success') === 'job_posted' || urlParams.get('success') === 'job_deleted') {
       refreshJobs()
-      // 清除 URL 参数
       window.history.replaceState({}, '', '/dashboard/employer')
     }
   }, [])
@@ -98,7 +95,6 @@ export default function EmployerDashboard() {
 
       setUser(user)
       
-      // 获取用户资料
       const { data: profileData } = await supabase
         .from('user_profiles')
         .select('*')
@@ -110,15 +106,12 @@ export default function EmployerDashboard() {
         return
       }
 
-      // 确保是企业用户
       if (profileData.user_type !== 'employer') {
         router.push('/dashboard/student')
         return
       }
 
       setProfile(profileData)
-      
-      // 获取发布的职位
       await refreshJobs(user.id)
     } catch (error) {
       console.error('获取用户信息错误:', error)
@@ -128,7 +121,41 @@ export default function EmployerDashboard() {
     }
   }
 
-  // 计算发布时间
+  // 删除职位功能
+  const handleDeleteJob = async (jobId: string, jobTitle: string, companyName: string) => {
+    if (!profile) {
+      alert('You do not have permission to delete this job')
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this job posting?\n\n"${jobTitle}" at ${companyName}\n\nThis action cannot be undone.`
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', jobId)
+        .eq('employer_id', profile.id)
+
+      if (error) {
+        throw error
+      }
+
+      alert('Job deleted successfully!')
+      await refreshJobs()
+    } catch (error: unknown) {
+      console.error('Delete error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      alert('Failed to delete job: ' + errorMessage)
+    }
+  }
+
   const getTimeAgo = (dateString: string) => {
     const now = new Date()
     const postDate = new Date(dateString)
@@ -148,7 +175,6 @@ export default function EmployerDashboard() {
     }
   }
 
-  // 生成公司Logo占位符
   const CompanyLogo = ({ companyName }: { companyName: string }) => (
     <div className="w-16 h-16 bg-black flex items-center justify-center rounded flex-shrink-0">
       <span className="text-white font-bold text-lg" style={{ color: '#c8ffd2' }}>
@@ -175,15 +201,13 @@ export default function EmployerDashboard() {
 
   return (
     <div className={`min-h-screen bg-white ${ptSans.className}`}>
-      {/* 使用 Header 组件 */}
       <Header />
 
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* 公司标题区域 - LinkedIn 风格 */}
+          {/* 公司标题区域 */}
           <div className="mb-8">
             <div className="flex items-start space-x-6">
-              {/* 公司Logo - 真实数据 */}
               <div className="w-24 h-24 bg-black rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
                 {profile.company_logo_url ? (
                   <img 
@@ -199,7 +223,6 @@ export default function EmployerDashboard() {
               </div>
               
               <div className="flex-1">
-                {/* 公司名称 - Dashboard */}
                 <div className="flex items-center mb-2">
                   <h1 className="text-3xl font-bold text-black">
                     {profile.company_name || 'Your Company'} - Dashboard
@@ -209,14 +232,12 @@ export default function EmployerDashboard() {
                   </div>
                 </div>
                 
-                {/* 公司简介 - 真实数据 */}
                 <p className="text-gray-700 font-medium mb-4 text-lg">
                   {profile.company_description || 
                     'Complete your company profile to showcase your organization to potential candidates.'
                   }
                 </p>
                 
-                {/* 公司信息 - 真实数据 */}
                 <div className="text-sm text-gray-600 font-medium">
                   <span className="mr-1">
                     {profile.industry || 'Industry not specified'}
@@ -288,7 +309,7 @@ export default function EmployerDashboard() {
             </div>
           </div>
 
-          {/* 已发布职位 - LinkedIn 风格 */}
+          {/* 已发布职位 */}
           <div className="bg-white shadow-lg rounded-lg p-6 border-2" style={{borderColor: '#c8ffd2'}}>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-lg font-bold text-black">
@@ -327,7 +348,6 @@ export default function EmployerDashboard() {
               </div>
             ) : (
               <>
-                {/* 职位卡片网格 - 只显示一行 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   {currentJobs.map((job) => (
                     <div 
@@ -335,7 +355,6 @@ export default function EmployerDashboard() {
                       className="bg-white border-2 rounded-lg p-6 hover:shadow-lg transition-all duration-200 relative group"
                       style={{borderColor: '#e5e7eb'}}
                     >
-                      {/* 收藏按钮 */}
                       <div className="absolute top-4 right-4">
                         <button 
                           type="button"
@@ -347,7 +366,6 @@ export default function EmployerDashboard() {
                         </button>
                       </div>
 
-                      {/* 公司Logo和职位信息 */}
                       <div className="flex items-start space-x-4">
                         <CompanyLogo companyName={job.company_name} />
                         
@@ -362,7 +380,6 @@ export default function EmployerDashboard() {
                             {job.location}
                           </p>
                           
-                          {/* 薪资信息 */}
                           {job.salary_range && (
                             <div className="mb-3">
                               <span className="text-sm font-medium text-gray-600">
@@ -371,7 +388,6 @@ export default function EmployerDashboard() {
                             </div>
                           )}
 
-                          {/* 工作类型标签 */}
                           {job.job_types && job.job_types.length > 0 && (
                             <div className="mb-4">
                               <div className="flex flex-wrap gap-1">
@@ -392,7 +408,6 @@ export default function EmployerDashboard() {
                             </div>
                           )}
 
-                          {/* 申请者统计（模拟数据） */}
                           <div className="mb-4">
                             <div className="flex items-center text-gray-500 text-sm">
                               <div className="w-4 h-4 bg-gray-300 rounded-full mr-2"></div>
@@ -400,24 +415,23 @@ export default function EmployerDashboard() {
                             </div>
                           </div>
 
-                          {/* 发布时间 */}
                           <div className="text-sm font-medium" style={{ color: '#22c55e' }}>
                             {getTimeAgo(job.created_at)}
                           </div>
                         </div>
                       </div>
 
-                      {/* 操作按钮 */}
+                      {/* 激活的操作按钮 */}
                       <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
                         <div className="flex space-x-2">
-                          <button 
-                            type="button"
+                          <Link
+                            href={`/dashboard/post-job?edit=${job.id}`}
                             className="text-black hover:opacity-70 text-sm font-bold transition-opacity px-3 py-1 rounded-full border border-black"
                           >
                             Edit
-                          </button>
+                          </Link>
                           <button 
-                            type="button"
+                            onClick={() => handleDeleteJob(job.id, job.title, job.company_name)}
                             className="text-white hover:bg-red-700 text-sm font-bold transition-colors px-3 py-1 rounded-full bg-red-600"
                           >
                             Delete
@@ -434,7 +448,6 @@ export default function EmployerDashboard() {
                   ))}
                 </div>
 
-                {/* 分页导航 */}
                 {totalPages > 1 && (
                   <div className="flex justify-between items-center pt-6 border-t border-gray-200">
                     <button
