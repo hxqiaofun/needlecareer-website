@@ -1,24 +1,84 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { CheckCircle, ArrowRight, Users, Heart, Shield, Sparkles, MessageCircle, Globe, Menu, X, User, LogOut, Briefcase } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { CheckCircle, ArrowRight, Users, Heart, Shield, Sparkles, MessageCircle, Globe, Menu, X, User, LogOut, Briefcase, Home, FileText } from "lucide-react";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { PT_Sans } from 'next/font/google';
 
-// 模拟用户数据和认证状态
+const ptSans = PT_Sans({ 
+  weight: ['400', '700'],
+  subsets: ['latin'] 
+});
+
+// 真实用户认证 Hook
 const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // 模拟检查用户登录状态
-    setTimeout(() => {
-      // 可以设置模拟用户来测试登录状态
-      // setUser({ name: "John Doe", email: "john@example.com", user_type: "student" });
-      setLoading(false);
-    }, 500);
+    checkUser();
+    
+    // 监听认证状态变化
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadUserProfile(session.user);
+      } else {
+        setUser(null);
+        setProfile(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  return { user, loading };
+  const checkUser = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      
+      if (user) {
+        await loadUserProfile(user);
+      }
+    } catch (error) {
+      console.error('Error checking user:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUserProfile = async (user: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) {
+        console.error('Error loading profile:', error);
+        return;
+      }
+      
+      setProfile(data);
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+    }
+  };
+
+  return { user, profile, loading };
 };
+
+// 用户类型定义
+interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  user_type: 'student' | 'employer';
+  company_name?: string;
+}
 
 // 品牌色彩
 const colors = {
@@ -122,35 +182,76 @@ const Badge: React.FC<BadgeProps> = ({ children, className = "" }) => (
 );
 
 // 头部组件
-interface User {
-  name: string;
-  email: string;
-  user_type: "student" | "employer";
-}
-
 interface HeaderProps {
-  user: User | null;
-  onSignIn: () => void;
-  onSignUp: () => void;
-  onSignOut: () => void;
+  user: any;
+  profile: UserProfile | null;
+  loading: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onSignIn, onSignUp, onSignOut }) => {
+const Header: React.FC<HeaderProps> = ({ user, profile, loading }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // 点击外部关闭下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSignIn = () => {
+    router.push('/login');
+  };
+
+  const handleSignUp = () => {
+    router.push('/register');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUserMenuOpen(false);
+      router.push('/');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
+  const handleDashboardClick = () => {
+    setUserMenuOpen(false);
+    if (profile?.user_type === 'student') {
+      router.push('/dashboard/student');
+    } else if (profile?.user_type === 'employer') {
+      router.push('/dashboard/employer');
+    } else {
+      router.push('/dashboard');
+    }
+  };
+
+  const handleBrowseJobs = () => {
+    router.push('/browse-jobs');
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-black/5 bg-white/70 backdrop-blur-md">
       <div className="max-w-[1120px] mx-auto px-4 md:px-8">
         <div className="flex items-center justify-between py-4">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-2xl flex items-center justify-center" style={{ background: colors.mint }}>
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <span className="font-semibold tracking-tight text-lg">NeedleCareer</span>
+          <Link href="/" className="flex items-center gap-3">
+            <img 
+              src="/images/Needle_logo.png" 
+              alt="Needle Logo" 
+              className="h-8 md:h-10 object-contain cursor-pointer hover:opacity-80 transition-opacity"
+            />
             <Badge>beta</Badge>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
@@ -162,28 +263,59 @@ const Header: React.FC<HeaderProps> = ({ user, onSignIn, onSignUp, onSignOut }) 
 
           {/* Auth Section */}
           <div className="flex items-center gap-3">
-            {user ? (
-              <div className="relative">
+            {loading ? (
+              <div className="w-20 h-8 bg-gray-200 animate-pulse rounded-2xl"></div>
+            ) : user && profile ? (
+              <div className="relative" ref={userMenuRef}>
                 <button 
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2 hover:bg-gray-50 rounded-2xl px-3 py-2 transition"
                 >
-                  <Avatar src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=c8ffd2&color=000`} fallback={user.name?.charAt(0) || 'U'} size="sm" />
-                  <span className="hidden md:inline text-sm font-medium">{user.name}</span>
+                  <Avatar 
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || profile.email)}&background=c8ffd2&color=000`} 
+                    fallback={profile.full_name?.charAt(0) || profile.email?.charAt(0) || 'U'} 
+                    size="sm" 
+                  />
+                  <span className="hidden md:inline text-sm font-medium">{profile.full_name || profile.email}</span>
                 </button>
                 
                 {userMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-lg border border-black/10 py-2">
-                    <a href="/dashboard" className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50">
-                      <User className="h-4 w-4" />
+                    <button
+                      onClick={handleDashboardClick}
+                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 w-full text-left transition-colors"
+                    >
+                      <Home className="h-4 w-4" />
                       Dashboard
-                    </a>
-                    <a href="/browse-jobs" className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50">
-                      <Briefcase className="h-4 w-4" />
-                      Browse Jobs
-                    </a>
+                    </button>
+                    
+                    {profile?.user_type === 'employer' ? (
+                      <Link
+                        href="/dashboard/post-job"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Post a Job
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          handleBrowseJobs();
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 w-full text-left transition-colors"
+                      >
+                        <Briefcase className="h-4 w-4" />
+                        Browse Jobs
+                      </button>
+                    )}
+                    
                     <hr className="my-2" />
-                    <button onClick={onSignOut} className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 w-full text-left">
+                    <button 
+                      onClick={handleSignOut} 
+                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 w-full text-left transition-colors"
+                    >
                       <LogOut className="h-4 w-4" />
                       Sign Out
                     </button>
@@ -192,10 +324,10 @@ const Header: React.FC<HeaderProps> = ({ user, onSignIn, onSignUp, onSignOut }) 
               </div>
             ) : (
               <>
-                <Button variant="ghost" className="hidden md:inline-flex" onClick={onSignIn}>
+                <Button variant="ghost" className="hidden md:inline-flex" onClick={handleSignIn}>
                   Sign in
                 </Button>
-                <Button onClick={onSignUp}>
+                <Button onClick={handleSignUp}>
                   Join free <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
               </>
@@ -221,8 +353,8 @@ const Header: React.FC<HeaderProps> = ({ user, onSignIn, onSignUp, onSignOut }) 
               <a href="#faq" className="py-2 text-sm text-gray-600 hover:text-black">FAQ</a>
               {!user && (
                 <div className="pt-3 border-t border-black/5 flex gap-2">
-                  <Button variant="ghost" onClick={onSignIn}>Sign in</Button>
-                  <Button onClick={onSignUp}>Join free</Button>
+                  <Button variant="ghost" onClick={handleSignIn}>Sign in</Button>
+                  <Button onClick={handleSignUp}>Join free</Button>
                 </div>
               )}
             </div>
@@ -235,27 +367,19 @@ const Header: React.FC<HeaderProps> = ({ user, onSignIn, onSignUp, onSignOut }) 
 
 // 主页面组件
 export default function NeedleCareerLanding() {
-  const { user, loading } = useAuth();
-
-  const handleSignIn = () => {
-    window.location.href = '/login';
-  };
-
-  const handleSignUp = () => {
-    window.location.href = '/register';
-  };
-
-  const handleSignOut = () => {
-    // 模拟登出
-    window.location.reload();
-  };
+  const { user, profile, loading } = useAuth();
+  const router = useRouter();
 
   const handleBrowseJobs = () => {
-    window.location.href = '/browse-jobs';
+    router.push('/browse-jobs');
   };
 
   const handlePostJob = () => {
-    window.location.href = '/dashboard/post-job';
+    router.push('/dashboard/post-job');
+  };
+
+  const handleSignUp = () => {
+    router.push('/register');
   };
 
   if (loading) {
@@ -268,12 +392,12 @@ export default function NeedleCareerLanding() {
 
   return (
     <div
-      className="min-h-screen text-black"
+      className={`min-h-screen text-black ${ptSans.className}`}
       style={{
         background: "radial-gradient(1000px 600px at 10% -10%, rgba(200,255,210,0.35), transparent 60%), radial-gradient(800px 500px at 90% -20%, rgba(200,255,210,0.25), transparent 60%), linear-gradient(#FFFFFF, #FFFFFF)",
       }}
     >
-      <Header user={user} onSignIn={handleSignIn} onSignUp={handleSignUp} onSignOut={handleSignOut} />
+      <Header user={user} profile={profile} loading={loading} />
 
       {/* HERO Section */}
       <section className="max-w-[1120px] mx-auto px-4 md:px-8 pt-14 md:pt-20 pb-8 md:pb-10 relative">
@@ -287,11 +411,11 @@ export default function NeedleCareerLanding() {
           {/* 左侧内容 */}
           <div className="md:col-span-7">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 text-xs border border-black/10 bg-white/70 backdrop-blur rounded-2xl">
-              {user ? `Welcome back, ${user.name}!` : "Made for students & early‑career talent"}
+              {user && profile ? `Welcome back, ${profile.full_name || profile.email}!` : "Made for students & early‑career talent"}
             </div>
             
             <h1 className="mt-4 text-[clamp(2rem,6vw,3.75rem)] leading-[1.05] font-semibold tracking-tight">
-              {user ? (
+              {user && profile ? (
                 <>Find your perfect <span className="bg-clip-text text-transparent bg-gradient-to-r from-black via-black to-gray-600">career match</span> today.</>
               ) : (
                 <>A <span className="bg-clip-text text-transparent bg-gradient-to-r from-black via-black to-gray-600">modern, kinder</span> way to find work.</>
@@ -299,8 +423,8 @@ export default function NeedleCareerLanding() {
             </h1>
             
             <p className="mt-4 text-gray-600 text-[clamp(1rem,2.2vw,1.125rem)] leading-relaxed max-w-xl">
-              {user ? (
-                user.user_type === 'student' ? 
+              {user && profile ? (
+                profile.user_type === 'student' ? 
                   "Browse verified jobs, connect with mentors, and take the next step in your career journey." :
                   "Post jobs, find talent, and build your dream team with our community-first approach."
               ) : (
@@ -309,9 +433,9 @@ export default function NeedleCareerLanding() {
             </p>
 
             {/* CTA Section */}
-            {user ? (
+            {user && profile ? (
               <div className="mt-6 flex flex-wrap gap-3">
-                {user.user_type === 'student' ? (
+                {profile.user_type === 'student' ? (
                   <Button onClick={handleBrowseJobs}>
                     <Briefcase className="mr-2 h-4 w-4" />
                     Browse Jobs
@@ -322,7 +446,7 @@ export default function NeedleCareerLanding() {
                     Post a Job
                   </Button>
                 )}
-                <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>
+                <Button variant="outline" onClick={() => router.push('/dashboard')}>
                   Go to Dashboard
                 </Button>
               </div>
@@ -366,7 +490,7 @@ export default function NeedleCareerLanding() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600 mt-3">$85–105k · H‑1B possible · NYC</p>
-                <Button variant="outline" className="mt-4">View role</Button>
+                <Button variant="outline" className="mt-4" onClick={handleBrowseJobs}>View role</Button>
               </Card>
 
               {/* 浮动卡片2 - 社区问答 */}
@@ -494,7 +618,7 @@ export default function NeedleCareerLanding() {
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Input placeholder="your@email.com" className="rounded-2xl border-2 border-black bg-white/80" />
-                <Button variant="outline">Request invite</Button>
+                <Button variant="outline" onClick={handleSignUp}>Request invite</Button>
               </div>
             </div>
           </div>
