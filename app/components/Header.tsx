@@ -5,6 +5,7 @@ import { PT_Sans } from 'next/font/google'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { Menu, X, User, LogOut, Briefcase, Home, FileText, ArrowRight } from 'lucide-react'
 
 const ptSans = PT_Sans({ 
   weight: ['400', '700'],
@@ -20,17 +21,48 @@ interface UserProfile {
 }
 
 interface HeaderProps {
-  showHeroSection?: boolean  // 是否显示绿色英雄区域
-  heroContent?: React.ReactNode  // 自定义英雄区域内容
-  className?: string  // 额外的CSS类
+  className?: string
 }
 
-export default function Header({ 
-  showHeroSection = false, 
-  heroContent = null,
+const Badge: React.FC<{ children: React.ReactNode; className?: string }> = ({ 
+  children, 
   className = "" 
-}: HeaderProps) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+}) => (
+  <span className={`inline-flex items-center rounded-full bg-black/5 px-2 py-1 text-xs text-gray-600 border border-black/10 ${className}`}>
+    {children}
+  </span>
+)
+
+const Avatar: React.FC<{ 
+  src?: string; 
+  alt?: string; 
+  fallback?: string; 
+  size?: "sm" | "md" | "lg" 
+}> = ({ 
+  src, 
+  alt, 
+  fallback, 
+  size = "sm" 
+}) => {
+  const sizes: Record<string, string> = {
+    sm: "h-8 w-8",
+    md: "h-10 w-10",
+    lg: "h-12 w-12"
+  }
+
+  return (
+    <div className={`${sizes[size]} rounded-full bg-gray-200 border-2 border-white overflow-hidden flex items-center justify-center`}>
+      {src ? (
+        <img src={src} alt={alt} className="h-full w-full object-cover" />
+      ) : (
+        <span className="text-xs font-medium text-gray-600">{fallback}</span>
+      )}
+    </div>
+  )
+}
+
+export default function Header({ className = "" }: HeaderProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
@@ -124,99 +156,103 @@ export default function Header({
     }
   }
 
+  if (loading) {
+    return (
+      <nav className={`sticky top-0 z-50 border-b border-black/5 bg-white/70 backdrop-blur-md ${ptSans.className} ${className}`}>
+        <div className="max-w-[1120px] mx-auto px-4 md:px-8">
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <div className="h-8 md:h-10 w-20 bg-gray-200 animate-pulse rounded"></div>
+            </div>
+            <div className="w-20 h-8 bg-gray-200 animate-pulse rounded"></div>
+          </div>
+        </div>
+      </nav>
+    )
+  }
+
   return (
-    <div className={`${ptSans.className} ${className}`}>
-      {/* 顶部导航栏 */}
-      <nav className="bg-white px-6 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+    <nav className={`sticky top-0 z-50 border-b border-black/5 bg-white/70 backdrop-blur-md ${ptSans.className} ${className}`}>
+      <div className="max-w-[1120px] mx-auto px-4 md:px-8">
+        <div className="flex items-center justify-between py-4">
           {/* Logo */}
-          <Link href="/">
+          <Link href="/" className="flex items-center gap-3">
             <img 
               src="/images/Needle_logo.png" 
               alt="Needle Logo" 
               className="h-8 md:h-10 object-contain cursor-pointer hover:opacity-80 transition-opacity"
             />
+            <Badge>beta</Badge>
           </Link>
-          
-          {/* 右侧按钮组 */}
-          <div className="flex items-center space-x-3">
-            {loading ? (
-              <div className="w-20 h-8 bg-gray-200 animate-pulse rounded"></div>
-            ) : user && profile ? (
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
+            <Link href="/browse-jobs" className="hover:text-black transition">
+              Jobs
+            </Link>
+            <a href="#" className="hover:text-black transition">Students</a>
+            <a href="#" className="hover:text-black transition">Employers</a>
+            <a href="#" className="hover:text-black transition">Resources</a>
+            <a href="#" className="hover:text-black transition">About</a>
+          </div>
+
+          {/* Auth Section */}
+          <div className="flex items-center gap-3">
+            {user && profile ? (
               // 已登录用户：显示用户名和下拉菜单
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center space-x-2 px-4 py-0.5 text-xl font-bold hover:opacity-60 transition-colors"
-                  style={{backgroundColor: '#c8ffd2', color: 'black'}}
+                  className="flex items-center gap-2 hover:bg-gray-50 rounded-2xl px-3 py-2 transition"
                 >
-                  <span>
+                  <Avatar 
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(profile.full_name || profile.email)}&background=c8ffd2&color=000`} 
+                    fallback={profile.full_name?.charAt(0) || profile.email?.charAt(0) || 'U'} 
+                    size="sm" 
+                  />
+                  <span className="hidden md:inline text-sm font-medium">
                     {profile.full_name || profile.email}
                   </span>
-                  <svg
-                    className={`w-4 h-4 transition-transform ${
-                      isUserMenuOpen ? 'rotate-180' : ''
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
                 </button>
 
                 {/* 下拉菜单 */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-lg border border-black/10 py-2">
                     <button
                       onClick={handleDashboardClick}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 transition-colors"
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#c8ffd2'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 w-full text-left transition-colors"
                     >
-                      <div className="flex items-center">
-                        <span className="mr-3">🏠</span>
-                        Dashboard
-                      </div>
+                      <Home className="h-4 w-4" />
+                      Dashboard
                     </button>
+                    
                     {profile?.user_type === 'employer' ? (
                       <Link
                         href="/dashboard/post-job"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 transition-colors"
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#c8ffd2'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
                       >
-                        <div className="flex items-center">
-                          <span className="mr-3">📝</span>
-                          Post a Job
-                        </div>
+                        <FileText className="h-4 w-4" />
+                        Post a Job
                       </Link>
                     ) : (
                       <Link
                         href="/browse-jobs"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 transition-colors"
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#c8ffd2'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
                       >
-                        <div className="flex items-center">
-                          <span className="mr-3">💼</span>
-                          Browse Jobs
-                        </div>
+                        <Briefcase className="h-4 w-4" />
+                        Browse Jobs
                       </Link>
                     )}
-                    <hr className="my-1" />
+                    
+                    <hr className="my-2" />
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 transition-colors"
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#c8ffd2'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 w-full text-left transition-colors"
                     >
-                      <div className="flex items-center">
-                        <span className="mr-3">🚪</span>
-                        Log out
-                      </div>
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
                     </button>
                   </div>
                 )}
@@ -224,134 +260,63 @@ export default function Header({
             ) : (
               // 未登录用户：显示登录和注册按钮
               <>
-                <Link href="/register">
-                  <button className="bg-black px-4 py-0.5 text-lg font-bold hover:bg-gray-800 transition-colors" style={{color: '#c8ffd2'}}>
-                    Sign Up
+                <Link href="/login">
+                  <button className="hidden md:inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 text-gray-700 hover:text-black hover:bg-gray-50">
+                    Sign in
                   </button>
                 </Link>
-                <Link href="/login">
-                  <button className="px-4 py-0.5 text-xl font-bold hover:opacity-60 transition-colors" style={{backgroundColor: '#c8ffd2', color: 'black'}}>
-                    Log in
+                <Link href="/register">
+                  <button className="inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 bg-black text-white hover:bg-gray-800 hover:translate-y-[-1px]">
+                    Join free <ArrowRight className="ml-1 h-4 w-4" />
                   </button>
                 </Link>
               </>
             )}
-          </div>
-        </div>
-      </nav>
 
-      {/* 导航菜单栏 */}
-      <div className="bg-white px-6 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center py-3">
-            {/* 左侧语言切换 */}
-            <span className="text-lg md:text-xl text-gray-800 font-bold">中/ENG</span>
-            
-            {/* 桌面端导航菜单 */}
-            <div className="hidden md:flex items-center space-x-6 text-xl text-gray-800 font-bold">
-              <a href="#" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>Students</a>
-              <span className="text-gray-400">|</span>
-              <a href="#" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>Employers</a>
-              <span className="text-gray-400">|</span>
-              <Link href="/browse-jobs" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>
-                Jobs
-              </Link>
-              <span className="text-gray-400">|</span>
-              <a href="#" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>Events</a>
-              <span className="text-gray-400">|</span>
-              <a href="#" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>Resources</a>
-              <span className="text-gray-400">|</span>
-              <a href="#" className="hover:opacity-80 transition-colors" style={{color: '#191919ff'}}>About Us</a>
-            </div>
-
-            {/* 手机端汉堡菜单按钮 */}
+            {/* Mobile menu button */}
             <button 
-              className="md:hidden flex flex-col space-y-1 p-2 z-50 relative"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              <div className={`w-6 h-0.5 bg-gray-800 transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></div>
-              <div className={`w-6 h-0.5 bg-gray-800 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></div>
-              <div className={`w-6 h-0.5 bg-gray-800 transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></div>
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
-
-          {/* 手机端悬浮下拉菜单 */}
-          {isMobileMenuOpen && (
-            <div className="md:hidden absolute top-full left-0 right-0 bg-gray-900 shadow-2xl z-40 transform transition-all duration-300">
-              <div className="flex flex-col text-white">
-                <a 
-                  href="#" 
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors border-b border-gray-700"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Students
-                </a>
-                <a 
-                  href="#" 
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors border-b border-gray-700"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Employers
-                </a>
-                <Link
-                  href="/browse-jobs"
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors border-b border-gray-700"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Jobs
-                </Link>
-                <a 
-                  href="#" 
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors border-b border-gray-700"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Events
-                </a>
-                <a 
-                  href="#" 
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors border-b border-gray-700"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Resources
-                </a>
-                <a 
-                  href="#" 
-                  className="px-6 py-4 text-lg font-bold hover:bg-gray-800 transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  About Us
-                </a>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* 背景遮罩 */}
-        {isMobileMenuOpen && (
-          <div 
-            className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
-            onClick={() => setIsMobileMenuOpen(false)}
-          ></div>
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-black/5 py-4">
+            <div className="flex flex-col gap-3">
+              <Link 
+                href="/browse-jobs" 
+                className="py-2 text-sm text-gray-600 hover:text-black"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Jobs
+              </Link>
+              <a href="#" className="py-2 text-sm text-gray-600 hover:text-black">Students</a>
+              <a href="#" className="py-2 text-sm text-gray-600 hover:text-black">Employers</a>
+              <a href="#" className="py-2 text-sm text-gray-600 hover:text-black">Resources</a>
+              <a href="#" className="py-2 text-sm text-gray-600 hover:text-black">About</a>
+              
+              {!user && (
+                <div className="pt-3 border-t border-black/5 flex gap-2">
+                  <Link href="/login">
+                    <button className="inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200 text-gray-700 hover:text-black hover:bg-gray-50">
+                      Sign in
+                    </button>
+                  </Link>
+                  <Link href="/register">
+                    <button className="inline-flex items-center justify-center rounded-2xl px-4 py-2 text-sm font-medium transition-all duration-200 bg-black text-white hover:bg-gray-800">
+                      Join free
+                    </button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
-
-      {/* 全宽度装饰横线 */}
-      <div className="w-full h-3" style={{backgroundColor: '#c8ffd2'}}></div>
-
-      {/* 可选的英雄区域 */}
-      {showHeroSection && (
-        <section className="mt-8 px-6 pt-8 py-16 md:py-14" style={{backgroundColor: '#c8ffd2'}}>
-          <div className="max-w-7xl mx-auto text-center">
-            {heroContent || (
-              <img 
-                src="/images/needlecareer.png"
-                alt="Neddlecareer" 
-                className="mx-auto mb-8 max-w-full max-h-32 md:max-h-48 lg:max-h-64 object-contain"
-              />
-            )}
-          </div>
-        </section>
-      )}
-    </div>
+    </nav>
   )
 }
