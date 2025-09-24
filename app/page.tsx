@@ -226,11 +226,13 @@ const Header: React.FC<HeaderProps> = ({ user, profile, loading }) => {
 
   const handleDashboardClick = () => {
     setUserMenuOpen(false);
+    console.log('Profile:', profile); // 调试日志
     if (profile?.user_type === 'student') {
       router.push('/dashboard/student');
     } else if (profile?.user_type === 'employer') {
       router.push('/dashboard/employer');
     } else {
+      // 如果用户类型不明确，跳转到通用 dashboard 让其重定向
       router.push('/dashboard');
     }
   };
@@ -446,7 +448,16 @@ export default function NeedleCareerLanding() {
                     Post a Job
                   </Button>
                 )}
-                <Button variant="outline" onClick={() => router.push('/dashboard')}>
+                <Button variant="outline" onClick={() => {
+                  console.log('Dashboard button clicked, profile:', profile);
+                  if (profile?.user_type === 'student') {
+                    router.push('/dashboard/student');
+                  } else if (profile?.user_type === 'employer') {
+                    router.push('/dashboard/employer');
+                  } else {
+                    router.push('/dashboard');
+                  }
+                }}>
                   Go to Dashboard
                 </Button>
               </div>
