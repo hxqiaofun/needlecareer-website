@@ -65,7 +65,7 @@ export default function Login() {
 
     try {
       // 只使用生产环境 URL
-      const redirectTo = 'https://needlecareer.com/auth/callback'
+      const redirectTo = 'https://demo.needlecareer.com/auth/callback'
 
       console.log('Redirect URL:', redirectTo) // 调试用
 
