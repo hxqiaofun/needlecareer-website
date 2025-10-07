@@ -1,232 +1,130 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import { PT_Sans } from 'next/font/google'
+import React, { useState } from 'react';
 
-const ptSans = PT_Sans({ 
-  weight: ['400', '700'],
-  subsets: ['latin'] 
-})
+export default function ComingSoon() {
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
-export default function AuthCallback() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    const handleAuthCallback = async () => {
-      console.log('Auth callback started') // 调试日志
-      
-      try {
-        // 处理 OAuth 回调
-        const { data, error } = await supabase.auth.getSession()
-        
-        console.log('Session data:', data) // 调试日志
-        console.log('Session error:', error) // 调试日志
-        
-        if (error) {
-          console.error('Auth callback error:', error)
-          setError('Authentication failed. Please try again.')
-          setLoading(false)
-          return
-        }
-
-        const session = data.session
-        if (session?.user) {
-          console.log('User found:', session.user) // 调试日志
-          
-          // 检查用户是否已有 profile
-          const { data: existingProfile, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-
-          console.log('Existing profile:', existingProfile) // 调试日志
-          console.log('Profile error:', profileError) // 调试日志
-
-          if (profileError && profileError.code !== 'PGRST116') {
-            // PGRST116 = no rows returned, which is expected for new users
-            console.error('Profile check error:', profileError)
-            setError('Profile check failed. Please try again.')
-            setLoading(false)
-            return
-          }
-
-          if (!existingProfile) {
-            console.log('New user detected, creating profile...') // 调试日志
-            // 新用户，需要创建 profile
-            const shouldRedirectToHome = await createNewUserProfile(session.user)
-            
-            // 只有在没有重定向到用户选择页面时才重定向到首页
-            if (shouldRedirectToHome) {
-              // 清理 localStorage
-              localStorage.removeItem('pendingUserType')
-              localStorage.removeItem('pendingCompanyName')
-              
-              console.log('Redirecting to home...') // 调试日志
-              router.push('/')
-            }
-          } else {
-            console.log('Existing user detected, updating...') // 调试日志
-            // 现有用户，检查是否需要更新信息
-            await handleExistingUser(existingProfile, session.user)
-            
-            // 清理 localStorage
-            localStorage.removeItem('pendingUserType')
-            localStorage.removeItem('pendingCompanyName')
-
-            // 重定向到首页
-            console.log('Redirecting to home...') // 调试日志
-            router.push('/')
-          }
-        } else {
-          console.log('No user session found') // 调试日志
-          setError('No user session found. Please try again.')
-          setLoading(false)
-        }
-      } catch (error) {
-        console.error('Auth callback error:', error)
-        setError('An unexpected error occurred. Please try again.')
-        setLoading(false)
-      }
+  const handleSubmit = () => {
+    if (email && email.includes('@')) {
+      console.log('Email submitted:', email);
+      setSubmitted(true);
+      setEmail('');
+      setTimeout(() => setSubmitted(false), 3000);
     }
-
-    handleAuthCallback()
-  }, [router])
-
-  const createNewUserProfile = async (user: any): Promise<boolean> => {
-    try {
-      // 检查是否从注册页面来的（有预设的用户类型）
-      const pendingUserType = localStorage.getItem('pendingUserType')
-      const pendingCompanyName = localStorage.getItem('pendingCompanyName')
-
-      console.log('Pending user type:', pendingUserType) // 调试日志
-      console.log('Pending company name:', pendingCompanyName) // 调试日志
-
-      if (pendingUserType) {
-        console.log('Creating profile with pending user type...') // 调试日志
-        // 从注册页面来的，直接创建资料
-        const fullName = user.user_metadata?.full_name || user.user_metadata?.name || ''
-        const email = user.email || ''
-
-        const { error: insertError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: user.id,
-            email: email,
-            full_name: fullName,
-            user_type: pendingUserType,
-            company_name: pendingUserType === 'employer' ? pendingCompanyName : null
-          })
-
-        if (insertError) {
-          throw insertError
-        }
-
-        console.log('New user profile created successfully from registration')
-        return true // 返回 true 表示应该重定向到首页
-      } else {
-        console.log('No pending user type, redirecting to user type selection...') // 调试日志
-        // 直接 Google 登录的新用户，需要选择用户类型
-        const fullName = user.user_metadata?.full_name || user.user_metadata?.name || ''
-        const email = user.email || ''
-        
-        // 重定向到用户类型选择页面，传递用户信息
-        const params = new URLSearchParams({
-          userId: user.id,
-          email: email,
-          fullName: fullName
-        })
-        
-        console.log('Redirecting to select user type with params:', params.toString()) // 调试日志
-        router.push(`/select-user-type?${params.toString()}`)
-        return false // 返回 false 表示不要重定向到首页
-      }
-    } catch (error) {
-      console.error('Error creating user profile:', error)
-      throw error
-    }
-  }
-
-  const handleExistingUser = async (existingProfile: any, user: any) => {
-    try {
-      // 检查是否需要更新用户信息
-      const updates: any = {}
-      const fullName = user.user_metadata?.full_name || user.user_metadata?.name || ''
-
-      // 更新 full_name 如果 Google 提供了更新的信息
-      if (fullName && fullName !== existingProfile.full_name) {
-        updates.full_name = fullName
-      }
-
-      // 如果有更新，则更新 profile
-      if (Object.keys(updates).length > 0) {
-        updates.updated_at = new Date().toISOString()
-        
-        const { error: updateError } = await supabase
-          .from('user_profiles')
-          .update(updates)
-          .eq('id', user.id)
-
-        if (updateError) {
-          console.error('Error updating user profile:', updateError)
-        } else {
-          console.log('User profile updated successfully')
-        }
-      }
-
-      console.log('Existing user logged in successfully')
-    } catch (error) {
-      console.error('Error handling existing user:', error)
-      throw error
-    }
-  }
-
-  if (error) {
-    return (
-      <div className={`min-h-screen bg-white flex items-center justify-center ${ptSans.className}`}>
-        <div className="text-center p-8">
-          <div className="mb-4">
-            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-              <span className="text-red-600 text-2xl">⚠️</span>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Authentication Error</h1>
-            <p className="text-gray-600 mb-6">{error}</p>
-            <div className="space-y-3">
-              <button
-                onClick={() => router.push('/register')}
-                className="w-full px-6 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
-                style={{color: '#c8ffd2'}}
-              >
-                Try Again
-              </button>
-              <button
-                onClick={() => router.push('/')}
-                className="w-full px-6 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
-              >
-                Go to Home
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  };
 
   return (
-    <div className={`min-h-screen bg-white flex items-center justify-center ${ptSans.className}`}>
-      <div className="text-center p-8">
-        <div className="mb-4">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: '#c8ffd2'}}>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header */}
+      <header className="border-b-2 border-[#c8ffd2]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="h-10 w-auto" />              
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Completing your sign-up...</h1>
-          <p className="text-gray-600">Please wait while we set up your account.</p>
         </div>
-      </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl w-full text-center">
+          {/* Logo or Icon */}
+          <div className="mb-8 flex justify-center">
+            <div className="w-32 h-32 bg-[#c8ffd2] rounded-full flex items-center justify-center p-4">
+              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="w-full h-full object-contain" />
+            </div>
+          </div>
+
+          {/* Main Message */}
+          <h1 className="text-5xl sm:text-6xl font-bold text-black mb-4">
+            Coming Soon...
+          </h1>
+          
+          <p className="text-xl sm:text-2xl text-gray-700 mb-8">
+            We're working hard to bring you the best job matching experience.
+          </p>
+
+          <p className="text-lg text-gray-600 mb-12">
+            NeedleCareer is currently in development. Sign up to be notified when we launch!
+          </p>
+
+          {/* Email Signup */}
+          <div className="max-w-md mx-auto">
+            {submitted ? (
+              <div className="bg-[#c8ffd2] text-black px-6 py-3 rounded-full text-center">
+                ✓ Thank you! We'll notify you when we launch.
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="flex-1 px-4 py-3 bg-[#c8ffd2] text-black placeholder-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-black text-sm"
+                />
+                <button
+                  onClick={handleSubmit}
+                  className="px-8 py-3 bg-black text-[#c8ffd2] rounded-full hover:bg-gray-800 transition-colors duration-200 font-medium text-sm"
+                >
+                  Notify Me
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Additional Info */}
+          <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8">
+            <div className="p-6">
+              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-black mb-2">For Job Seekers</h3>
+              <p className="text-gray-600 text-sm">Find your perfect job match with AI-powered recommendations</p>
+            </div>
+
+            <div className="p-6">
+              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-black mb-2">For Employers</h3>
+              <p className="text-gray-600 text-sm">Connect with top talent and streamline your hiring process</p>
+            </div>
+
+            <div className="p-6">
+              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-black mb-2">Smart Matching</h3>
+              <p className="text-gray-600 text-sm">Advanced algorithms to find your needle in the haystack</p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t-2 border-[#c8ffd2] py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-gray-600 text-sm">
+            <p>© 2025 NeedleCareer. All rights reserved.</p>
+            <p className="mt-2">
+              Questions? Contact us at{' '}
+              <a href="mailto:info@needlecareer.com" className="text-black hover:underline">
+                info@needlecareer.com
+              </a>
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
-  )
+  );
 }

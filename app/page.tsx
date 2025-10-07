@@ -22,7 +22,8 @@ export default function ComingSoon() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="h-10 w-auto" />              
+              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="h-10 w-auto" />
+              <span className="text-2xl font-bold text-black">Career</span>
             </div>
           </div>
         </div>
@@ -33,8 +34,10 @@ export default function ComingSoon() {
         <div className="max-w-3xl w-full text-center">
           {/* Logo or Icon */}
           <div className="mb-8 flex justify-center">
-            <div className="w-32 h-32 bg-[#c8ffd2] rounded-full flex items-center justify-center p-4">
-              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="w-full h-full object-contain" />
+            <div className="w-24 h-24 bg-[#c8ffd2] rounded-full flex items-center justify-center">
+              <svg className="w-12 h-12 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
           </div>
 

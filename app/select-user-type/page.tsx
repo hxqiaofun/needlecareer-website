@@ -1,234 +1,130 @@
-'use client'
+'use client';
 
-import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
-import { PT_Sans } from 'next/font/google'
-import Header from '@/app/components/Header'
+import React, { useState } from 'react';
 
-const ptSans = PT_Sans({ 
-  weight: ['400', '700'],
-  subsets: ['latin'] 
-})
+export default function ComingSoon() {
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
-// 将使用 useSearchParams 的组件分离出来
-function UserTypeForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [userType, setUserType] = useState<'student' | 'employer'>('student')
-  const [companyName, setCompanyName] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-
-  // 从 URL 参数获取用户信息
-  const userId = searchParams.get('userId')
-  const email = searchParams.get('email')
-  const fullName = searchParams.get('fullName')
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!userId || !email || !fullName) {
-      setMessage('Missing user information. Please try signing in again.')
-      return
+  const handleSubmit = () => {
+    if (email && email.includes('@')) {
+      console.log('Email submitted:', email);
+      setSubmitted(true);
+      setEmail('');
+      setTimeout(() => setSubmitted(false), 3000);
     }
-
-    setLoading(true)
-    setMessage('')
-
-    try {
-      // 创建用户资料
-      const { error: insertError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: userId,
-          email: email,
-          full_name: fullName,
-          user_type: userType,
-          company_name: userType === 'employer' ? companyName : null
-        })
-
-      if (insertError) {
-        setMessage('Failed to create profile: ' + insertError.message)
-        return
-      }
-
-      // 成功创建后重定向到首页
-      setMessage('Profile created successfully! Redirecting...')
-      setTimeout(() => {
-        router.push('/')
-      }, 1500)
-
-    } catch (error) {
-      console.error('Error creating profile:', error)
-      setMessage('An unexpected error occurred. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  };
 
   return (
-    <div className="max-w-md mx-auto">
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: '#c8ffd2'}}>
-          <span className="text-2xl">👋</span>
-        </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Welcome to NeedleCareer!
-        </h1>
-        <p className="text-gray-600">
-          To complete your registration, please tell us about yourself.
-        </p>
-        {fullName && (
-          <p className="text-sm text-gray-500 mt-2">
-            Signed in as: <span className="font-medium">{fullName}</span>
-          </p>
-        )}
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* User Type Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-800 mb-3">
-            I am a:
-          </label>
-          <div className="space-y-3">
-            <div 
-              className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                userType === 'student' 
-                  ? 'border-black bg-gray-50' 
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setUserType('student')}
-            >
-              <div className="flex items-center">
-                <input
-                  type="radio"
-                  name="userType"
-                  value="student"
-                  checked={userType === 'student'}
-                  onChange={(e) => setUserType(e.target.value as 'student')}
-                  className="mr-3 text-black focus:ring-black"
-                  style={{accentColor: '#c8ffd2'}}
-                />
-                <div>
-                  <div className="font-medium text-gray-900">🎓 Student</div>
-                  <div className="text-sm text-gray-600">Looking for job opportunities</div>
-                </div>
-              </div>
-            </div>
-
-            <div 
-              className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                userType === 'employer' 
-                  ? 'border-black bg-gray-50' 
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setUserType('employer')}
-            >
-              <div className="flex items-center">
-                <input
-                  type="radio"
-                  name="userType"
-                  value="employer"
-                  checked={userType === 'employer'}
-                  onChange={(e) => setUserType(e.target.value as 'employer')}
-                  className="mr-3 text-black focus:ring-black"
-                  style={{accentColor: '#c8ffd2'}}
-                />
-                <div>
-                  <div className="font-medium text-gray-900">🏢 Employer</div>
-                  <div className="text-sm text-gray-600">Looking to hire talent</div>
-                </div>
-              </div>
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header */}
+      <header className="border-b-2 border-[#c8ffd2]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="h-10 w-auto" />              
             </div>
           </div>
         </div>
+      </header>
 
-        {/* Company Name (Only for employers) */}
-        {userType === 'employer' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-800 mb-2">
-              Company Name
-            </label>
-            <input
-              type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              required
-              className="block w-full px-4 py-3 rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black"
-              style={{backgroundColor: '#c8ffd2'}}
-              placeholder="Enter your company name"
-            />
-            <p className="text-xs text-gray-600 mt-1">
-              This will be displayed on your job postings
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl w-full text-center">
+          {/* Logo or Icon */}
+          <div className="mb-8 flex justify-center">
+            <div className="w-32 h-32 bg-[#c8ffd2] rounded-full flex items-center justify-center p-4">
+              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="w-full h-full object-contain" />
+            </div>
+          </div>
+
+          {/* Main Message */}
+          <h1 className="text-5xl sm:text-6xl font-bold text-black mb-4">
+            Coming Soon...
+          </h1>
+          
+          <p className="text-xl sm:text-2xl text-gray-700 mb-8">
+            We're working hard to bring you the best job matching experience.
+          </p>
+
+          <p className="text-lg text-gray-600 mb-12">
+            NeedleCareer is currently in development. Sign up to be notified when we launch!
+          </p>
+
+          {/* Email Signup */}
+          <div className="max-w-md mx-auto">
+            {submitted ? (
+              <div className="bg-[#c8ffd2] text-black px-6 py-3 rounded-full text-center">
+                ✓ Thank you! We'll notify you when we launch.
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="flex-1 px-4 py-3 bg-[#c8ffd2] text-black placeholder-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-black text-sm"
+                />
+                <button
+                  onClick={handleSubmit}
+                  className="px-8 py-3 bg-black text-[#c8ffd2] rounded-full hover:bg-gray-800 transition-colors duration-200 font-medium text-sm"
+                >
+                  Notify Me
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Additional Info */}
+          <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8">
+            <div className="p-6">
+              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-black mb-2">For Job Seekers</h3>
+              <p className="text-gray-600 text-sm">Find your perfect job match with AI-powered recommendations</p>
+            </div>
+
+            <div className="p-6">
+              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-black mb-2">For Employers</h3>
+              <p className="text-gray-600 text-sm">Connect with top talent and streamline your hiring process</p>
+            </div>
+
+            <div className="p-6">
+              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-black mb-2">Smart Matching</h3>
+              <p className="text-gray-600 text-sm">Advanced algorithms to find your needle in the haystack</p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t-2 border-[#c8ffd2] py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-gray-600 text-sm">
+            <p>© 2025 NeedleCareer. All rights reserved.</p>
+            <p className="mt-2">
+              Questions? Contact us at{' '}
+              <a href="mailto:info@needlecareer.com" className="text-black hover:underline">
+                info@needlecareer.com
+              </a>
             </p>
           </div>
-        )}
-
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={loading || (userType === 'employer' && !companyName.trim())}
-          className={`w-full py-3 text-lg font-bold transition-colors ${
-            loading || (userType === 'employer' && !companyName.trim())
-              ? 'bg-gray-400 cursor-not-allowed text-white' 
-              : 'bg-black text-white hover:bg-gray-800'
-          }`}
-          style={!loading && !(userType === 'employer' && !companyName.trim()) ? {color: '#c8ffd2'} : {}}
-        >
-          {loading ? 'Creating Profile...' : 'Complete Registration'}
-        </button>
-
-        {/* Message Display */}
-        {message && (
-          <div className={`p-3 rounded-lg text-sm font-medium text-center ${
-            message.includes('successfully') 
-              ? 'bg-green-50 text-green-700 border border-green-200' 
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
-            {message}
-          </div>
-        )}
-      </form>
-
-      {/* Help Text */}
-      <div className="mt-8 text-center text-xs text-gray-500">
-        <p>You can change this later in your profile settings</p>
-      </div>
-    </div>
-  )
-}
-
-// 加载状态组件
-function LoadingFallback() {
-  return (
-    <div className="max-w-md mx-auto">
-      <div className="text-center">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor: '#c8ffd2'}}>
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Loading...
-        </h1>
-        <p className="text-gray-600">
-          Please wait while we prepare your registration.
-        </p>
-      </div>
+      </footer>
     </div>
-  )
-}
-
-export default function SelectUserType() {
-  return (
-    <div className={`min-h-screen bg-white ${ptSans.className}`}>
-      <Header />
-      
-      <main className="container mx-auto px-4 py-16">
-        <Suspense fallback={<LoadingFallback />}>
-          <UserTypeForm />
-        </Suspense>
-      </main>
-    </div>
-  )
+  );
 }

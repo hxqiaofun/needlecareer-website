@@ -1,344 +1,130 @@
-// app/test-extraction/page.tsx
 'use client';
 
-import { useState, useRef } from 'react';
-import { 
-  extractTextFromFile, 
-  ExtractionResult, 
-  ExtractionStatus,
-  isFileSupported,
-  formatFileSize,
-  validateExtractionQuality
-} from '@/lib/file-extractors/index';
+import React, { useState } from 'react';
 
-export default function TestExtractionPage() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export default function ComingSoon() {
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setExtractionResult(null);
-      setError(null);
-      setProgress(0);
-      setCurrentStep('');
+  const handleSubmit = () => {
+    if (email && email.includes('@')) {
+      console.log('Email submitted:', email);
+      setSubmitted(true);
+      setEmail('');
+      setTimeout(() => setSubmitted(false), 3000);
     }
   };
-
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const file = event.dataTransfer.files[0];
-    if (file) {
-      setSelectedFile(file);
-      setExtractionResult(null);
-      setError(null);
-      setProgress(0);
-      setCurrentStep('');
-    }
-  };
-
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  };
-
-  const startExtraction = async () => {
-    if (!selectedFile) return;
-
-    setIsExtracting(true);
-    setError(null);
-    setProgress(0);
-    setCurrentStep('Starting extraction...');
-
-    try {
-      // 检查文件是否支持
-      if (!isFileSupported(selectedFile)) {
-        throw new Error('File type not supported. Please use PDF, DOC, or DOCX files.');
-      }
-
-      // 开始提取
-      const result = await extractTextFromFile(
-        selectedFile,
-        (progressInfo) => {
-          setProgress(progressInfo.progress);
-          setCurrentStep(progressInfo.currentStep);
-        }
-      );
-
-      setExtractionResult(result);
-
-      if (result.success) {
-        setCurrentStep('Extraction completed successfully!');
-      } else {
-        setError(result.error?.message || 'Unknown extraction error');
-      }
-
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      setCurrentStep('Extraction failed');
-    } finally {
-      setIsExtracting(false);
-    }
-  };
-
-  const clearAll = () => {
-    setSelectedFile(null);
-    setExtractionResult(null);
-    setError(null);
-    setProgress(0);
-    setCurrentStep('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const getFileTypeIcon = (fileName: string) => {
-    const ext = fileName.toLowerCase().split('.').pop();
-    switch (ext) {
-      case 'pdf': return '📄';
-      case 'doc': return '📝';
-      case 'docx': return '📝';
-      default: return '📄';
-    }
-  };
-
-  const qualityInfo = extractionResult?.success 
-    ? validateExtractionQuality(extractionResult)
-    : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* 头部 */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            File Extraction Test
-          </h1>
-          <p className="text-gray-600">
-            Test PDF and Word document text extraction functionality
-          </p>
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header */}
+      <header className="border-b-2 border-[#c8ffd2]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="h-10 w-auto" />              
+            </div>
+          </div>
         </div>
+      </header>
 
-        {/* 文件选择区域 */}
-        <div className="bg-white rounded-lg shadow-sm border-2 border-gray-200 p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Select File</h2>
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl w-full text-center">
+          {/* Logo or Icon */}
+          <div className="mb-8 flex justify-center">
+            <div className="w-32 h-32 bg-[#c8ffd2] rounded-full flex items-center justify-center p-4">
+              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="w-full h-full object-contain" />
+            </div>
+          </div>
+
+          {/* Main Message */}
+          <h1 className="text-5xl sm:text-6xl font-bold text-black mb-4">
+            Coming Soon...
+          </h1>
           
-          <div
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            
-            {selectedFile ? (
-              <div className="space-y-3">
-                <div className="text-4xl">{getFileTypeIcon(selectedFile.name)}</div>
-                <div>
-                  <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                  <p className="text-gray-500">{formatFileSize(selectedFile.size)}</p>
-                  <p className="text-sm text-gray-400">
-                    {isFileSupported(selectedFile) ? '✅ Supported format' : '❌ Unsupported format'}
-                  </p>
-                </div>
+          <p className="text-xl sm:text-2xl text-gray-700 mb-8">
+            We're working hard to bring you the best job matching experience.
+          </p>
+
+          <p className="text-lg text-gray-600 mb-12">
+            NeedleCareer is currently in development. Sign up to be notified when we launch!
+          </p>
+
+          {/* Email Signup */}
+          <div className="max-w-md mx-auto">
+            {submitted ? (
+              <div className="bg-[#c8ffd2] text-black px-6 py-3 rounded-full text-center">
+                ✓ Thank you! We'll notify you when we launch.
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="text-4xl">📁</div>
-                <div>
-                  <p className="text-gray-600">Drop a file here or click to select</p>
-                  <p className="text-sm text-gray-400">Supports PDF, DOC, DOCX files</p>
-                </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="flex-1 px-4 py-3 bg-[#c8ffd2] text-black placeholder-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-black text-sm"
+                />
+                <button
+                  onClick={handleSubmit}
+                  className="px-8 py-3 bg-black text-[#c8ffd2] rounded-full hover:bg-gray-800 transition-colors duration-200 font-medium text-sm"
+                >
+                  Notify Me
+                </button>
               </div>
             )}
           </div>
 
-          {/* 操作按钮 */}
-          <div className="flex gap-4 mt-6">
-            <button
-              onClick={startExtraction}
-              disabled={!selectedFile || isExtracting || !isFileSupported(selectedFile)}
-              className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isExtracting ? '🔄' : '🚀'} 
-              {isExtracting ? 'Extracting...' : 'Start Extraction'}
-            </button>
-            
-            <button
-              onClick={clearAll}
-              className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300"
-            >
-              🗑️ Clear All
-            </button>
-          </div>
-        </div>
-
-        {/* 进度显示 */}
-        {isExtracting && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h3 className="text-lg font-semibold mb-4">Extraction Progress</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>{currentStep}</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
+          {/* Additional Info */}
+          <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8">
+            <div className="p-6">
+              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* 错误显示 */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <h3 className="text-lg font-semibold text-red-800 mb-2">❌ Extraction Failed</h3>
-            <p className="text-red-700">{error}</p>
-          </div>
-        )}
-
-        {/* 提取结果 */}
-        {extractionResult && (
-          <div className="space-y-6">
-            {/* 结果概览 */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold mb-4">
-                {extractionResult.success ? '✅ Extraction Results' : '❌ Extraction Failed'}
-              </h3>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-gray-900">{extractionResult.metadata.wordCount}</p>
-                  <p className="text-sm text-gray-600">Words</p>
-                </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-gray-900">{extractionResult.metadata.characterCount}</p>
-                  <p className="text-sm text-gray-600">Characters</p>
-                </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-gray-900">{extractionResult.metadata.extractionTime}ms</p>
-                  <p className="text-sm text-gray-600">Time</p>
-                </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-gray-900">{extractionResult.fileType.toUpperCase()}</p>
-                  <p className="text-sm text-gray-600">Format</p>
-                </div>
-              </div>
-
-              {/* 质量评估 */}
-              {qualityInfo && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium mb-2">Quality Assessment</h4>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`px-2 py-1 rounded text-sm ${
-                      qualityInfo.isGoodQuality 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {qualityInfo.isGoodQuality ? 'Good Quality' : 'Needs Review'}
-                    </span>
-                    <span className="text-sm text-gray-600">Score: {qualityInfo.score}/100</span>
-                  </div>
-                  {qualityInfo.suggestions.length > 0 && (
-                    <div className="text-sm text-gray-600">
-                      <p className="font-medium">Suggestions:</p>
-                      <ul className="list-disc list-inside">
-                        {qualityInfo.suggestions.map((suggestion, index) => (
-                          <li key={index}>{suggestion}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
+              <h3 className="font-bold text-black mb-2">For Job Seekers</h3>
+              <p className="text-gray-600 text-sm">Find your perfect job match with AI-powered recommendations</p>
             </div>
 
-            {/* 提取的文本内容 */}
-            {extractionResult.success && extractionResult.extractedText && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold mb-4">📝 Extracted Text</h3>
-                <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
-                    {extractionResult.extractedText}
-                  </pre>
-                </div>
-                
-                <div className="mt-4 flex gap-2">
-                  <button
-                    onClick={() => navigator.clipboard.writeText(extractionResult.extractedText)}
-                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 text-sm"
-                  >
-                    📋 Copy Text
-                  </button>
-                  <button
-                    onClick={() => {
-                      const blob = new Blob([extractionResult.extractedText], { type: 'text/plain' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `extracted-${selectedFile?.name || 'text'}.txt`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    }}
-                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 text-sm"
-                  >
-                    💾 Download Text
-                  </button>
-                </div>
+            <div className="p-6">
+              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
               </div>
-            )}
+              <h3 className="font-bold text-black mb-2">For Employers</h3>
+              <p className="text-gray-600 text-sm">Connect with top talent and streamline your hiring process</p>
+            </div>
 
-            {/* 错误详情 */}
-            {!extractionResult.success && extractionResult.error && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold mb-4 text-red-700">Error Details</h3>
-                <div className="space-y-2">
-                  <p><strong>Code:</strong> {extractionResult.error.code}</p>
-                  <p><strong>Message:</strong> {extractionResult.error.message}</p>
-                  {extractionResult.error.details && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-sm text-gray-600">
-                        View technical details
-                      </summary>
-                      <pre className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-700 overflow-auto">
-                        {extractionResult.error.details}
-                      </pre>
-                    </details>
-                  )}
-                </div>
+            <div className="p-6">
+              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
               </div>
-            )}
+              <h3 className="font-bold text-black mb-2">Smart Matching</h3>
+              <p className="text-gray-600 text-sm">Advanced algorithms to find your needle in the haystack</p>
+            </div>
           </div>
-        )}
-
-        {/* 返回链接 */}
-        <div className="text-center mt-8">
-          <a 
-            href="/dashboard/student/resumes/upload" 
-            className="text-blue-600 hover:text-blue-800 text-sm"
-          >
-            ← Back to Resume Upload
-          </a>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t-2 border-[#c8ffd2] py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-gray-600 text-sm">
+            <p>© 2025 NeedleCareer. All rights reserved.</p>
+            <p className="mt-2">
+              Questions? Contact us at{' '}
+              <a href="mailto:info@needlecareer.com" className="text-black hover:underline">
+                info@needlecareer.com
+              </a>
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
