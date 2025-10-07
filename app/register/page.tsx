@@ -1,130 +1,280 @@
-'use client';
+'use client'
 
-import React, { useState } from 'react';
+import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { PT_Sans } from 'next/font/google'
+import Header from '@/app/components/Header'
 
-export default function ComingSoon() {
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+const ptSans = PT_Sans({ 
+  weight: ['400', '700'],
+  subsets: ['latin'] 
+})
 
-  const handleSubmit = () => {
-    if (email && email.includes('@')) {
-      console.log('Email submitted:', email);
-      setSubmitted(true);
-      setEmail('');
-      setTimeout(() => setSubmitted(false), 3000);
+export default function Register() {
+  const router = useRouter()
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    userType: 'student',
+    companyName: ''
+  })
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setMessage('')
+
+    try {
+      // 注册用户
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      })
+
+      if (authError) {
+        setMessage('Registration failed: ' + authError.message)
+        return
+      }
+
+      if (authData.user) {
+        // 创建用户资料
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: authData.user.id,
+            email: formData.email,
+            full_name: formData.fullName,
+            user_type: formData.userType,
+            company_name: formData.userType === 'employer' ? formData.companyName : null
+          })
+
+        if (profileError) {
+          setMessage('Profile creation failed: ' + profileError.message)
+          return
+        }
+
+        setMessage('Registration successful! Please check your email for verification.')
+      }
+    } catch (error) {
+      setMessage('An error occurred, please try again')
+      console.error('Registration error:', error)
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
-      <header className="border-b-2 border-[#c8ffd2]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="h-10 w-auto" />              
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className={`min-h-screen bg-white ${ptSans.className}`}>
+      {/* 使用 Header 组件 */}
+      <Header />
 
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl w-full text-center">
-          {/* Logo or Icon */}
-          <div className="mb-8 flex justify-center">
-            <div className="w-32 h-32 bg-[#c8ffd2] rounded-full flex items-center justify-center p-4">
-              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="w-full h-full object-contain" />
-            </div>
-          </div>
-
-          {/* Main Message */}
-          <h1 className="text-5xl sm:text-6xl font-bold text-black mb-4">
-            Coming Soon...
-          </h1>
-          
-          <p className="text-xl sm:text-2xl text-gray-700 mb-8">
-            We're working hard to bring you the best job matching experience.
-          </p>
-
-          <p className="text-lg text-gray-600 mb-12">
-            NeedleCareer is currently in development. Sign up to be notified when we launch!
-          </p>
-
-          {/* Email Signup */}
-          <div className="max-w-md mx-auto">
-            {submitted ? (
-              <div className="bg-[#c8ffd2] text-black px-6 py-3 rounded-full text-center">
-                ✓ Thank you! We'll notify you when we launch.
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="flex-1 px-4 py-3 bg-[#c8ffd2] text-black placeholder-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-black text-sm"
+      {/* 主要内容区域 - 响应式布局 */}
+      <main className="min-h-screen">
+        <div className="grid lg:grid-cols-2 min-h-screen">
+          {/* 左侧 - 品牌介绍区域 (手机端隐藏) */}
+          <div className="hidden lg:flex bg-white items-top justify-center px-8 py-5 lg:py-14">
+            <div className="max-w-md">
+              {/* Needle Logo */}
+              <div className="mb-8">
+                <img 
+                  src="/images/needle_600x116.png" 
+                  alt="Needle" 
+                  className="w-full max-w-xs object-contain"
                 />
-                <button
-                  onClick={handleSubmit}
-                  className="px-8 py-3 bg-black text-[#c8ffd2] rounded-full hover:bg-gray-800 transition-colors duration-200 font-medium text-sm"
-                >
-                  Notify Me
-                </button>
               </div>
-            )}
+              
+              {/* 标语 */}
+              <div className="mb-8">
+                <p className="text-xl lg:text-2xl text-black font-medium leading-tight">
+                  Let Needle help you shine the haystack.
+                </p>
+                <p className="text-xl lg:text-2xl text-black font-bold mt-2">
+                  Join today.
+                </p>
+              </div>
+
+              {/* 登录链接 */}
+              <div className="text-sm text-gray-600">
+                Already have your account?{' '}
+                <Link href="/login" className="text-black font-medium hover:underline transition-colors">
+                  log in
+                </Link>
+              </div>
+            </div>
           </div>
 
-          {/* Additional Info */}
-          <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8">
-            <div className="p-6">
-              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-black mb-2">For Job Seekers</h3>
-              <p className="text-gray-600 text-sm">Find your perfect job match with AI-powered recommendations</p>
-            </div>
+          {/* 右侧 - 注册表单区域 (手机端全宽) */}
+          <div className="flex items-top justify-center px-8 py-14 lg:col-span-1 col-span-2" style={{backgroundColor: '#ffffffff'}}>
+            <div className="w-full max-w-md">
+              {/* 注册表单 */}
+              <form onSubmit={handleSubmit} className="space-y-2">
+                {/* User Type Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-800 mb-2">
+                    I am a
+                  </label>
+                  <select
+                    name="userType"
+                    value={formData.userType}
+                    onChange={handleChange}
+                    className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black"
+                    style={{backgroundColor: '#c8ffd2'}}
+                  >
+                    <option value="student">Student</option>
+                    <option value="employer">Employer</option>
+                  </select>
+                </div>
 
-            <div className="p-6">
-              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-black mb-2">For Employers</h3>
-              <p className="text-gray-600 text-sm">Connect with top talent and streamline your hiring process</p>
-            </div>
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-800 mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black"
+                    style={{backgroundColor: '#c8ffd2'}}
+                    placeholder="johnsmith@gmail.com"
+                  />
+                </div>
 
-            <div className="p-6">
-              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-black mb-2">Smart Matching</h3>
-              <p className="text-gray-600 text-sm">Advanced algorithms to find your needle in the haystack</p>
+                {/* Password */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-800 mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      minLength={8}
+                      className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black pr-10"
+                      style={{backgroundColor: '#c8ffd2'}}
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
+                    >
+                      👁
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Use 8 or more characters with uppercase letters, numbers and symbols
+                  </p>
+                </div>
+
+                {/* Full Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-800 mb-2">
+                    {formData.userType === 'employer' ? 'Contact Name' : 'Full Name'}
+                  </label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    required
+                    className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black"
+                    style={{backgroundColor: '#c8ffd2'}}
+                    placeholder="Enter your full name"
+                  />
+                </div>
+
+                {/* Company Name (Only for employers) */}
+                {formData.userType === 'employer' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-800 mb-2">
+                      Company Name
+                    </label>
+                    <input
+                      type="text"
+                      name="companyName"
+                      value={formData.companyName}
+                      onChange={handleChange}
+                      required
+                      className="block w-full px-4 py-2 text-sm rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-black"
+                      style={{backgroundColor: '#c8ffd2'}}
+                      placeholder="Your Company Name"
+                    />
+                  </div>
+                )}
+
+                {/* Sign up Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full py-2 text-lg font-bold transition-colors mt-18 ${
+                    loading 
+                      ? 'bg-gray-400 cursor-not-allowed text-white' 
+                      : 'bg-black text-white hover:bg-gray-800'
+                  }`}
+                  style={!loading ? {color: '#c8ffd2'} : {}}
+                >
+                  {loading ? 'Signing up...' : 'Sign up with Email'}
+                </button>
+
+                {/* OR divider */}
+                <div className="relative mt-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-400"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 text-gray-600 font-medium" style={{backgroundColor: '#ffffff'}}>OR</span>
+                  </div>
+                </div>
+
+               {/* Continue with Google Button - 新的跳转逻辑 */}
+                <button
+                  type="button"
+                  onClick={() => router.push('/google-signup')}
+                  className="w-full py-2 mt-4 text-lg font-bold bg-gray-500 text-[#c8ffd2] hover:bg-gray-600 transition-colors"
+                >
+                  🚀 Sign up with Google
+                </button>
+
+                {/* Terms and Privacy */}
+                <p className="text-xs text-gray-600 mt-4 leading-relaxed">
+                  By continuing, you agree to the{' '}
+                  <a href="#" className="text-black hover:underline">Terms of Use</a>,{' '}
+                  <a href="#" className="text-black hover:underline">Private Policy</a>, and{' '}
+                  Receive a <a href="#" className="text-black hover:underline">Text G@</a>
+                </p>
+
+                {/* 消息显示 */}
+                {message && (
+                  <div className={`p-3 rounded text-sm font-medium ${
+                    message.includes('successful') 
+                      ? 'bg-white text-green-700' 
+                      : 'bg-white text-red-700'
+                  }`}>
+                    {message}
+                  </div>
+                )}
+              </form>
             </div>
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t-2 border-[#c8ffd2] py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-gray-600 text-sm">
-            <p>© 2025 NeedleCareer. All rights reserved.</p>
-            <p className="mt-2">
-              Questions? Contact us at{' '}
-              <a href="mailto:info@needlecareer.com" className="text-black hover:underline">
-                info@needlecareer.com
-              </a>
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
-  );
+  )
 }

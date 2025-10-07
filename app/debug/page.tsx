@@ -1,130 +1,179 @@
+// 临时调试页面 - 可以放在任何测试路径
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
-export default function ComingSoon() {
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+export default function DebugResumePage() {
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
-    if (email && email.includes('@')) {
-      console.log('Email submitted:', email);
-      setSubmitted(true);
-      setEmail('');
-      setTimeout(() => setSubmitted(false), 3000);
+  const runDiagnostic = async () => {
+    setLoading(true);
+    const info: any = {
+      timestamp: new Date().toISOString(),
+    };
+
+    try {
+      // 1. 检查用户认证状态
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      info.auth = {
+        session: session ? 'Found' : 'Not found',
+        user_id: session?.user?.id || 'None',
+        email: session?.user?.email || 'None',
+        error: authError
+      };
+
+      if (session) {
+        // 2. 检查用户资料
+        const { data: profileData, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        info.profile = {
+          found: profileData ? 'Yes' : 'No',
+          user_type: profileData?.user_type || 'None',
+          error: profileError
+        };
+
+        // 3. 检查简历表
+        const { data: resumesData, error: resumesError } = await supabase
+          .from('resumes')
+          .select('*')
+          .eq('student_id', session.user.id);
+        
+        info.resumes = {
+          count: resumesData?.length || 0,
+          resumes: resumesData || [],
+          error: resumesError
+        };
+
+        // 4. 检查数据库表结构
+        const { data: tableInfo, error: tableError } = await supabase
+          .from('resumes')
+          .select('*')
+          .limit(1);
+        
+        info.database = {
+          resumes_table_accessible: tableError ? 'No' : 'Yes',
+          sample_columns: tableInfo?.[0] ? Object.keys(tableInfo[0]) : [],
+          error: tableError
+        };
+
+        // 5. 检查 resume_details 表
+        const { data: detailsInfo, error: detailsError } = await supabase
+          .from('resume_details')
+          .select('*')
+          .limit(1);
+        
+        info.resume_details = {
+          table_accessible: detailsError ? 'No' : 'Yes',
+          sample_columns: detailsInfo?.[0] ? Object.keys(detailsInfo[0]) : [],
+          error: detailsError
+        };
+      }
+
+    } catch (error) {
+      info.fatal_error = error;
     }
+
+    setDebugInfo(info);
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Header */}
-      <header className="border-b-2 border-[#c8ffd2]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="h-10 w-auto" />              
-            </div>
+    <div className="max-w-4xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">NeedleCareer 简历系统调试工具</h1>
+      
+      <button
+        onClick={runDiagnostic}
+        disabled={loading}
+        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400"
+      >
+        {loading ? '检查中...' : '运行诊断'}
+      </button>
+
+      {debugInfo && (
+        <div className="mt-6 space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h2 className="font-semibold mb-2">🔍 诊断结果</h2>
+            <pre className="bg-white p-4 rounded border overflow-auto text-sm">
+              {JSON.stringify(debugInfo, null, 2)}
+            </pre>
           </div>
+
+          {/* 快速创建测试简历按钮 */}
+          {debugInfo.auth?.session === 'Found' && debugInfo.resumes?.count === 0 && (
+            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+              <h3 className="font-semibold text-yellow-800 mb-2">⚠️ 没有找到简历</h3>
+              <p className="text-yellow-700 mb-3">您还没有创建任何简历。</p>
+              <CreateTestResumeButton userId={debugInfo.auth.user_id} />
+            </div>
+          )}
+
+          {/* 显示现有简历的编辑链接 */}
+          {debugInfo.resumes?.resumes?.length > 0 && (
+            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+              <h3 className="font-semibold text-green-800 mb-2">✅ 找到简历</h3>
+              <div className="space-y-2">
+                {debugInfo.resumes.resumes.map((resume: any) => (
+                  <div key={resume.id} className="flex items-center justify-between bg-white p-2 rounded">
+                    <span>{resume.title}</span>
+                    <a
+                      href={`/dashboard/student/resumes/edit/${resume.id}`}
+                      className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
+                    >
+                      编辑
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl w-full text-center">
-          {/* Logo or Icon */}
-          <div className="mb-8 flex justify-center">
-            <div className="w-32 h-32 bg-[#c8ffd2] rounded-full flex items-center justify-center p-4">
-              <img src="/images/Needle_logo.png" alt="NeedleCareer Logo" className="w-full h-full object-contain" />
-            </div>
-          </div>
-
-          {/* Main Message */}
-          <h1 className="text-5xl sm:text-6xl font-bold text-black mb-4">
-            Coming Soon...
-          </h1>
-          
-          <p className="text-xl sm:text-2xl text-gray-700 mb-8">
-            We're working hard to bring you the best job matching experience.
-          </p>
-
-          <p className="text-lg text-gray-600 mb-12">
-            NeedleCareer is currently in development. Sign up to be notified when we launch!
-          </p>
-
-          {/* Email Signup */}
-          <div className="max-w-md mx-auto">
-            {submitted ? (
-              <div className="bg-[#c8ffd2] text-black px-6 py-3 rounded-full text-center">
-                ✓ Thank you! We'll notify you when we launch.
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="flex-1 px-4 py-3 bg-[#c8ffd2] text-black placeholder-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-black text-sm"
-                />
-                <button
-                  onClick={handleSubmit}
-                  className="px-8 py-3 bg-black text-[#c8ffd2] rounded-full hover:bg-gray-800 transition-colors duration-200 font-medium text-sm"
-                >
-                  Notify Me
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Additional Info */}
-          <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8">
-            <div className="p-6">
-              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-black mb-2">For Job Seekers</h3>
-              <p className="text-gray-600 text-sm">Find your perfect job match with AI-powered recommendations</p>
-            </div>
-
-            <div className="p-6">
-              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-black mb-2">For Employers</h3>
-              <p className="text-gray-600 text-sm">Connect with top talent and streamline your hiring process</p>
-            </div>
-
-            <div className="p-6">
-              <div className="w-12 h-12 bg-[#c8ffd2] rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-black mb-2">Smart Matching</h3>
-              <p className="text-gray-600 text-sm">Advanced algorithms to find your needle in the haystack</p>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t-2 border-[#c8ffd2] py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-gray-600 text-sm">
-            <p>© 2025 NeedleCareer. All rights reserved.</p>
-            <p className="mt-2">
-              Questions? Contact us at{' '}
-              <a href="mailto:info@needlecareer.com" className="text-black hover:underline">
-                info@needlecareer.com
-              </a>
-            </p>
-          </div>
-        </div>
-      </footer>
+      )}
     </div>
+  );
+}
+
+function CreateTestResumeButton({ userId }: { userId: string }) {
+  const [creating, setCreating] = useState(false);
+
+  const createTestResume = async () => {
+    setCreating(true);
+    try {
+      const { data, error } = await supabase
+        .from('resumes')
+        .insert({
+          student_id: userId,
+          title: 'My First Resume',
+          status: 'draft',
+          is_default: true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        alert('创建失败: ' + error.message);
+      } else {
+        alert('测试简历创建成功！');
+        window.location.href = `/dashboard/student/resumes/edit/${data.id}`;
+      }
+    } catch (error) {
+      alert('创建时出错: ' + error);
+    }
+    setCreating(false);
+  };
+
+  return (
+    <button
+      onClick={createTestResume}
+      disabled={creating}
+      className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:bg-gray-400"
+    >
+      {creating ? '创建中...' : '创建测试简历'}
+    </button>
   );
 }
